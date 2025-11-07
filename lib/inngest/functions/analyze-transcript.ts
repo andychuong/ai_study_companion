@@ -114,13 +114,20 @@ IMPORTANT: Each concept in concepts_taught must have a descriptive "name" field 
 
     // Step 4: Update session with analysis
     await step.run('store-insights', async () => {
+      // Normalize concepts to ensure name is always present
+      const normalizedConcepts = insights.concepts_taught.map((c) => ({
+        name: c.name || c.id || c.subject || 'Unknown Concept',
+        difficulty: c.difficulty,
+        masteryLevel: c.masteryLevel,
+      }));
+
       await db
         .update(sessions)
         .set({
           analysisStatus: 'completed',
           analysisData: {
             topics: insights.topics_covered,
-            concepts: insights.concepts_taught,
+            concepts: normalizedConcepts,
             studentStrengths: insights.student_strengths,
             areasForImprovement: insights.areas_for_improvement,
             actionItems: insights.action_items,
