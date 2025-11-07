@@ -75,22 +75,32 @@ Extract and return JSON with:
       return { chunks, embeddings };
     });
 
-    // Step 3: Store in vector DB
+    // Step 3: Store in vector DB (optional - skip if Pinecone not configured)
     await step.run('store-vectors', async () => {
-      const vectors = chunks.chunks.map((chunk, index) => ({
-        id: `${sessionId}-chunk-${index}`,
-        values: chunks.embeddings[index],
-        metadata: {
-          studentId,
-          sessionId,
-          date: new Date().toISOString(),
-          topics: insights.topics_covered,
-          concepts: insights.concepts_taught.map((c) => c.name),
-        },
-      }));
+      try {
+        const vectors = chunks.chunks.map((chunk, index) => ({
+          id: `${sessionId}-chunk-${index}`,
+          values: chunks.embeddings[index],
+          metadata: {
+            studentId,
+            sessionId,
+            date: new Date().toISOString(),
+            topics: insights.topics_covered,
+            concepts: insights.concepts_taught.map((c) => c.name),
+          },
+        }));
 
-      await upsertVectors(vectors);
-      logger.info('Stored vectors in Pinecone', { sessionId, count: vectors.length });
+        await upsertVectors(vectors);
+        logger.info('Stored vectors in Pinecone', { sessionId, count: vectors.length });
+      } catch (error) {
+        // Log but don't fail the entire analysis if Pinecone fails
+        logger.warn('Failed to store vectors in Pinecone (continuing without RAG)', { 
+          error, 
+          sessionId,
+          message: error instanceof Error ? error.message : 'Unknown error'
+        });
+        // Continue without failing - analysis can complete without vector storage
+      }
     });
 
     // Step 4: Update session with analysis

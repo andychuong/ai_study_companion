@@ -1,14 +1,26 @@
 import { Pinecone } from '@pinecone-database/pinecone';
+import { logger } from '@/lib/utils/logger';
 
-if (!process.env.PINECONE_API_KEY) {
-  console.warn('⚠️  PINECONE_API_KEY is not set. RAG features will not work.');
-}
-
-// Initialize Pinecone client (newer SDK only needs API key)
+// Initialize Pinecone client lazily (initialize when needed, not at module load)
 let pinecone: Pinecone | null = null;
 let index: ReturnType<Pinecone['index']> | null = null;
 
-if (process.env.PINECONE_API_KEY) {
+/**
+ * Initialize Pinecone client if not already initialized
+ * This is called lazily to ensure environment variables are available
+ */
+function initializePinecone(): boolean {
+  // If already initialized, return true
+  if (index) {
+    return true;
+  }
+
+  // Check if API key is available
+  if (!process.env.PINECONE_API_KEY) {
+    logger.warn('PINECONE_API_KEY is not set. RAG features will not work.');
+    return false;
+  }
+
   try {
     pinecone = new Pinecone({
       apiKey: process.env.PINECONE_API_KEY,
@@ -16,10 +28,13 @@ if (process.env.PINECONE_API_KEY) {
     
     const INDEX_NAME = process.env.PINECONE_INDEX_NAME || 'study-companion';
     index = pinecone.index(INDEX_NAME);
+    logger.info('Pinecone client initialized', { indexName: INDEX_NAME });
+    return true;
   } catch (error) {
-    console.error('Failed to initialize Pinecone:', error);
+    logger.error('Failed to initialize Pinecone', { error });
     pinecone = null;
     index = null;
+    return false;
   }
 }
 
@@ -33,8 +48,9 @@ export async function upsertVectors(
     metadata: Record<string, any>;
   }>
 ) {
-  if (!index) {
-    throw new Error('Pinecone is not configured. Please add PINECONE_API_KEY to your .env.local file.');
+  // Initialize Pinecone if not already initialized
+  if (!initializePinecone() || !index) {
+    throw new Error('Pinecone is not configured. Please add PINECONE_API_KEY to your environment variables.');
   }
   await index.upsert(vectors);
 }
@@ -50,9 +66,10 @@ export async function queryVectors(
     includeMetadata?: boolean;
   }
 ) {
-  if (!index) {
+  // Initialize Pinecone if not already initialized
+  if (!initializePinecone() || !index) {
     // Return empty results if Pinecone is not configured (for development)
-    console.warn('Pinecone not configured, returning empty results');
+    logger.warn('Pinecone not configured, returning empty results');
     return { matches: [] };
   }
   const topK = options?.topK ?? 5;
@@ -71,7 +88,8 @@ export async function queryVectors(
  * Delete vectors by IDs
  */
 export async function deleteVectors(ids: string[]) {
-  if (!index) {
+  // Initialize Pinecone if not already initialized
+  if (!initializePinecone() || !index) {
     throw new Error('Pinecone is not configured');
   }
   await index.deleteMany(ids);
@@ -81,7 +99,8 @@ export async function deleteVectors(ids: string[]) {
  * Delete vectors by filter
  */
 export async function deleteVectorsByFilter(filter: Record<string, any>) {
-  if (!index) {
+  // Initialize Pinecone if not already initialized
+  if (!initializePinecone() || !index) {
     throw new Error('Pinecone is not configured');
   }
   await index.deleteMany(filter);
