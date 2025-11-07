@@ -6,13 +6,18 @@ import { requireAuth } from '@/lib/auth/middleware';
 import { createApiHandler } from '@/lib/utils/api-handler';
 import { NotFoundError, ForbiddenError } from '@/lib/utils/errors';
 
-async function handler(req: NextRequest, context: { params: { notificationId: string } }) {
+async function handler(req: NextRequest, context?: { params?: Promise<Record<string, string>> | Record<string, string> }) {
   if (req.method !== 'POST') {
     return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
   }
 
   const session = await requireAuth(req);
-  const { notificationId } = await Promise.resolve(context.params);
+  const params = context?.params ? await Promise.resolve(context.params) : {};
+  const { notificationId } = params;
+  
+  if (!notificationId) {
+    return NextResponse.json({ error: 'Notification ID required' }, { status: 400 });
+  }
 
   const notification = await db.query.notifications.findFirst({
     where: eq(notifications.id, notificationId),

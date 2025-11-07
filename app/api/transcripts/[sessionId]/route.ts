@@ -6,13 +6,18 @@ import { requireAuth } from '@/lib/auth/middleware';
 import { createApiHandler } from '@/lib/utils/api-handler';
 import { NotFoundError } from '@/lib/utils/errors';
 
-async function handler(req: NextRequest, context: { params: { sessionId: string } }) {
+async function handler(req: NextRequest, context?: { params?: Promise<Record<string, string>> | Record<string, string> }) {
   if (req.method !== 'GET') {
     return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
   }
 
   const session = await requireAuth(req);
-  const { sessionId } = context.params;
+  const params = context?.params ? await Promise.resolve(context.params) : {};
+  const { sessionId } = params;
+  
+  if (!sessionId) {
+    return NextResponse.json({ error: 'Session ID required' }, { status: 400 });
+  }
 
   const sessionRecord = await db.query.sessions.findFirst({
     where: eq(sessions.id, sessionId),

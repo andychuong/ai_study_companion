@@ -6,13 +6,18 @@ import { requireAuth } from '@/lib/auth/middleware';
 import { createApiHandler } from '@/lib/utils/api-handler';
 import { NotFoundError, ForbiddenError } from '@/lib/utils/errors';
 
-async function handler(req: NextRequest, context: { params: { practiceId: string } }) {
+async function handler(req: NextRequest, context?: { params?: Promise<Record<string, string>> | Record<string, string> }) {
   if (req.method !== 'GET') {
     return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
   }
 
   const session = await requireAuth(req);
-  const { practiceId } = context.params;
+  const params = context?.params ? await Promise.resolve(context.params) : {};
+  const { practiceId } = params;
+  
+  if (!practiceId) {
+    return NextResponse.json({ error: 'Practice ID required' }, { status: 400 });
+  }
 
   const practice = await db.query.practices.findFirst({
     where: eq(practices.id, practiceId),

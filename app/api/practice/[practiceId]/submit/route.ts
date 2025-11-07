@@ -14,13 +14,18 @@ const submitSchema = z.object({
   })),
 });
 
-async function handler(req: NextRequest, context: { params: { practiceId: string } }) {
+async function handler(req: NextRequest, context?: { params?: Promise<Record<string, string>> | Record<string, string> }) {
   if (req.method !== 'POST') {
     return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
   }
 
   const session = await requireStudent(req);
-  const { practiceId } = context.params;
+  const params = context?.params ? await Promise.resolve(context.params) : {};
+  const { practiceId } = params;
+  
+  if (!practiceId) {
+    return NextResponse.json({ error: 'Practice ID required' }, { status: 400 });
+  }
   const body = await parseJsonBody(req);
   const { answers } = submitSchema.parse(body);
 

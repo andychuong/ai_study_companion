@@ -7,13 +7,18 @@ import { createApiHandler } from '@/lib/utils/api-handler';
 import { NotFoundError, ForbiddenError } from '@/lib/utils/errors';
 import { inngest } from '@/lib/inngest';
 
-async function handler(req: NextRequest, context: { params: { goalId: string } }) {
+async function handler(req: NextRequest, context?: { params?: Promise<Record<string, string>> | Record<string, string> }) {
   if (req.method !== 'PUT') {
     return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
   }
 
   const session = await requireStudent(req);
-  const { goalId } = context.params;
+  const params = context?.params ? await Promise.resolve(context.params) : {};
+  const { goalId } = params;
+  
+  if (!goalId) {
+    return NextResponse.json({ error: 'Goal ID required' }, { status: 400 });
+  }
 
   const goal = await db.query.goals.findFirst({
     where: eq(goals.id, goalId),

@@ -6,13 +6,18 @@ import { requireStudent } from '@/lib/auth/middleware';
 import { createApiHandler } from '@/lib/utils/api-handler';
 import { NotFoundError, ForbiddenError } from '@/lib/utils/errors';
 
-async function handler(req: NextRequest, context: { params: { suggestionId: string } }) {
+async function handler(req: NextRequest, context?: { params?: Promise<Record<string, string>> | Record<string, string> }) {
   if (req.method !== 'POST') {
     return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
   }
 
   const session = await requireStudent(req);
-  const { suggestionId } = await Promise.resolve(context.params);
+  const params = context?.params ? await Promise.resolve(context.params) : {};
+  const { suggestionId } = params;
+  
+  if (!suggestionId) {
+    return NextResponse.json({ error: 'Suggestion ID required' }, { status: 400 });
+  }
 
   const suggestion = await db.query.subjectSuggestions.findFirst({
     where: eq(subjectSuggestions.id, suggestionId),
