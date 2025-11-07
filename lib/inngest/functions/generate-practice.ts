@@ -11,6 +11,32 @@ export const generatePractice = inngest.createFunction(
   async ({ event, step }) => {
     const { practiceId, sessionId, studentId, conceptIds } = event.data;
 
+    // Step 0: Create practice record if not provided
+    const practice = await step.run('create-practice', async () => {
+      if (practiceId) {
+        // Practice already exists, fetch it
+        const existingPractice = await db.query.practices.findFirst({
+          where: eq(practices.id, practiceId),
+        });
+        if (existingPractice) {
+          return existingPractice;
+        }
+      }
+
+      // Create new practice record
+      const [newPractice] = await db
+        .insert(practices)
+        .values({
+          studentId,
+          sessionId,
+          status: 'assigned',
+          questions: [], // Will be populated by this function
+        })
+        .returning();
+      
+      return newPractice;
+    });
+
     // Step 1: Get session data
     const session = await step.run('get-session', async () => {
       const sessionData = await db.query.sessions.findFirst({
@@ -194,7 +220,7 @@ Return JSON with a "problems" array. Each problem must have:
       const validQuestions = questionResults.filter((q): q is NonNullable<typeof q> => q !== null);
 
       if (validQuestions.length === 0) {
-        logger.warn('No valid questions to store', { practiceId, studentId, rawProblems: practiceProblems });
+        logger.warn('No valid questions to store', { practiceId: practice.id, studentId, rawProblems: practiceProblems });
         throw new Error('No valid questions generated');
       }
 
@@ -205,10 +231,10 @@ Return JSON with a "problems" array. Each problem must have:
           status: 'assigned',
           dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
         })
-        .where(eq(practices.id, practiceId));
+        .where(eq(practices.id, practice.id));
     });
 
-    logger.info('Practice generated', { practiceId, studentId, questionCount: practiceProblems.length });
+    logger.info('Practice generated', { practiceId: practice.id, studentId, questionCount: practiceProblems.length });
   }
 );
 
