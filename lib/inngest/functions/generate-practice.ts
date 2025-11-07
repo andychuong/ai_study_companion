@@ -60,8 +60,8 @@ export const generatePractice = inngest.createFunction(
       const conceptsList = session.analysisData?.concepts || [];
       const conceptsText = conceptsList
         .map((c) => {
-          // Handle concepts with name, id, or subject
-          const conceptName = c.name || c.id || c.subject || 'Unknown Concept';
+          // Concepts from database always have name (normalized during storage)
+          const conceptName = c.name || 'Unknown Concept';
           return `${conceptName} (difficulty: ${c.difficulty || 5}, mastery: ${c.masteryLevel || 50}%)`;
         })
         .join(', ');
@@ -118,79 +118,80 @@ Return JSON with a "problems" array. Each problem must have:
     // Step 6: Store practice
     await step.run('store-practice', async () => {
       // Validate and normalize questions
-      const validQuestions = await Promise.all(
-        practiceProblems
-          .map(async (problem) => {
-            // Validate required fields
-            if (
-              !problem ||
-              typeof problem !== 'object' ||
-              !problem.questionId ||
-              typeof problem.questionId !== 'string' ||
-              problem.questionId.trim().length === 0 ||
-              !problem.question ||
-              typeof problem.question !== 'string' ||
-              problem.question.trim().length === 0 ||
-              !problem.type ||
-              typeof problem.type !== 'string' ||
-              typeof problem.difficulty !== 'number' ||
-              problem.difficulty < 1 ||
-              problem.difficulty > 10
-            ) {
-              return null;
-            }
+      const questionResults = await Promise.all(
+        practiceProblems.map(async (problem) => {
+          // Validate required fields
+          if (
+            !problem ||
+            typeof problem !== 'object' ||
+            !problem.questionId ||
+            typeof problem.questionId !== 'string' ||
+            problem.questionId.trim().length === 0 ||
+            !problem.question ||
+            typeof problem.question !== 'string' ||
+            problem.question.trim().length === 0 ||
+            !problem.type ||
+            typeof problem.type !== 'string' ||
+            typeof problem.difficulty !== 'number' ||
+            problem.difficulty < 1 ||
+            problem.difficulty > 10
+          ) {
+            return null;
+          }
 
-            // Resolve concept ID
-            let conceptId = problem.conceptId || '';
+          // Resolve concept ID
+          let conceptId = problem.conceptId || '';
+          
+          // If conceptId is provided, try to find the concept
+          if (conceptId && conceptId.trim().length > 0) {
+            // First try to find by ID (UUID)
+            let concept = await db.query.concepts.findFirst({
+              where: eq(concepts.id, conceptId),
+            });
             
-            // If conceptId is provided, try to find the concept
-            if (conceptId && conceptId.trim().length > 0) {
-              // First try to find by ID (UUID)
-              let concept = await db.query.concepts.findFirst({
-                where: eq(concepts.id, conceptId),
+            // If not found by ID, try to find by name
+            if (!concept) {
+              concept = await db.query.concepts.findFirst({
+                where: eq(concepts.name, conceptId),
               });
-              
-              // If not found by ID, try to find by name
-              if (!concept) {
-                concept = await db.query.concepts.findFirst({
-                  where: eq(concepts.name, conceptId),
+            }
+            
+            if (concept) {
+              conceptId = concept.id;
+            } else {
+              // If concept not found, use the first concept from the session or create a placeholder
+              const sessionConcepts = session.analysisData?.concepts || [];
+              if (sessionConcepts.length > 0) {
+                // Concepts from database always have name (normalized during storage)
+                const sessionConceptName = sessionConcepts[0].name || '';
+                const foundConcept = await db.query.concepts.findFirst({
+                  where: eq(concepts.name, sessionConceptName),
                 });
-              }
-              
-              if (concept) {
-                conceptId = concept.id;
-              } else {
-                // If concept not found, use the first concept from the session or create a placeholder
-                const sessionConcepts = session.analysisData?.concepts || [];
-                if (sessionConcepts.length > 0) {
-                  // Try to find concept by name/id from session
-                  const sessionConceptName = sessionConcepts[0].name || sessionConcepts[0].id || sessionConcepts[0].subject;
-                  const foundConcept = await db.query.concepts.findFirst({
-                    where: eq(concepts.name, sessionConceptName || ''),
-                  });
-                  conceptId = foundConcept?.id || '';
-                }
+                conceptId = foundConcept?.id || '';
               }
             }
+          }
 
-            // If still no conceptId, use empty string (will be stored but not linked)
-            if (!conceptId || conceptId.trim().length === 0) {
-              conceptId = '';
-            }
+          // If still no conceptId, use empty string (will be stored but not linked)
+          if (!conceptId || conceptId.trim().length === 0) {
+            conceptId = '';
+          }
 
-            return {
-              questionId: problem.questionId.trim(),
-              question: problem.question.trim(),
-              type: problem.type.trim(),
-              options: problem.options && Array.isArray(problem.options) ? problem.options : undefined,
-              difficulty: problem.difficulty,
-              conceptId: conceptId,
-              correct_answer: problem.correct_answer || problem.correctAnswer || '',
-              explanation: problem.explanation || '',
-            };
-          })
-          .then(results => results.filter((q): q is NonNullable<typeof q> => q !== null))
+          return {
+            questionId: problem.questionId.trim(),
+            question: problem.question.trim(),
+            type: problem.type.trim(),
+            options: problem.options && Array.isArray(problem.options) ? problem.options : undefined,
+            difficulty: problem.difficulty,
+            conceptId: conceptId,
+            correct_answer: problem.correct_answer || problem.correctAnswer || '',
+            explanation: problem.explanation || '',
+          };
+        })
       );
+
+      // Filter out null values
+      const validQuestions = questionResults.filter((q): q is NonNullable<typeof q> => q !== null);
 
       if (validQuestions.length === 0) {
         logger.warn('No valid questions to store', { practiceId, studentId, rawProblems: practiceProblems });
