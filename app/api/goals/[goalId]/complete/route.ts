@@ -6,6 +6,7 @@ import { requireStudent } from '@/lib/auth/middleware';
 import { createApiHandler } from '@/lib/utils/api-handler';
 import { NotFoundError, ForbiddenError } from '@/lib/utils/errors';
 import { inngest } from '@/lib/inngest';
+import { logger } from '@/lib/utils/logger';
 
 async function handler(req: NextRequest, context?: { params?: Promise<Record<string, string>> | Record<string, string> }) {
   if (req.method !== 'PUT') {
@@ -56,7 +57,7 @@ async function handler(req: NextRequest, context?: { params?: Promise<Record<str
     }
   } catch (error) {
     // Log but don't fail the request if Inngest is not configured
-    console.warn('Failed to send Inngest event (Inngest may not be configured):', error);
+    logger.warn('Failed to send Inngest event (Inngest may not be configured)', { error, goalId });
   }
 
   const updatedGoal = await db.query.goals.findFirst({

@@ -7,6 +7,7 @@ import { createApiHandler, parseJsonBody } from '@/lib/utils/api-handler';
 import { generateEmbedding } from '@/lib/openai/client';
 import { queryVectors } from '@/lib/pinecone/client';
 import { chatCompletion } from '@/lib/openai/client';
+import { logger } from '@/lib/utils/logger';
 import { z } from 'zod';
 
 const messageSchema = z.object({
@@ -43,13 +44,27 @@ async function handler(req: NextRequest) {
     content: message,
   });
 
-  // RAG: Get relevant context
-  const questionEmbedding = await generateEmbedding(message);
-  const relevantChunks = await queryVectors(questionEmbedding, {
-    topK: 5,
-    filter: { studentId: session.user.id },
-    includeMetadata: true,
-  });
+  // RAG: Get relevant context (with error handling)
+  let relevantChunks: Awaited<ReturnType<typeof queryVectors>> = { matches: [] };
+  try {
+    // Check if OpenAI is configured before trying to generate embeddings
+    if (process.env.OPENAI_API_KEY) {
+      const questionEmbedding = await generateEmbedding(message);
+      relevantChunks = await queryVectors(questionEmbedding, {
+        topK: 5,
+        filter: { studentId: session.user.id },
+        includeMetadata: true,
+      });
+    } else {
+      logger.warn('OPENAI_API_KEY not configured, skipping RAG context', { studentId: session.user.id });
+    }
+  } catch (error: any) {
+    // Log but continue without RAG context if Pinecone/OpenAI fails
+    logger.warn('Failed to get RAG context, continuing without it', { 
+      error: error?.message || String(error),
+      studentId: session.user.id 
+    });
+  }
 
   // Get conversation history
   const conversationHistory = await db.query.messages.findMany({
@@ -59,8 +74,9 @@ async function handler(req: NextRequest) {
   });
 
   // Build context for LLM
-  const context = relevantChunks.matches
-    .map((match) => match.metadata?.excerpt || '')
+  const context = (relevantChunks.matches || [])
+    .map((match: any) => String(match.metadata?.excerpt || ''))
+    .filter((excerpt: string) => excerpt.length > 0)
     .join('\n\n');
 
   const historyMessages = conversationHistory.map((msg) => ({
@@ -68,8 +84,17 @@ async function handler(req: NextRequest) {
     content: msg.content,
   }));
 
-  // Generate response
-  const systemPrompt = `You are an AI Study Companion helping ${session.user.name || 'a student'}.
+  // Generate response (with error handling)
+  let response = 'I apologize, but I encountered an error generating a response. Please try again.';
+  let completionId = '';
+  
+  try {
+    // Check if OpenAI is configured
+    if (!process.env.OPENAI_API_KEY) {
+      logger.warn('OPENAI_API_KEY not configured', { studentId: session.user.id });
+      response = 'I apologize, but the AI service is not configured. Please contact support.';
+    } else {
+      const systemPrompt = `You are an AI Study Companion helping ${session.user.name || 'a student'}.
 
 Context from previous sessions:
 ${context}
@@ -81,13 +106,30 @@ Instructions:
 4. Keep responses concise (2-3 paragraphs max)
 5. Use examples relevant to the student's grade level`;
 
-  const completion = await chatCompletion([
-    { role: 'system', content: systemPrompt },
-    ...historyMessages,
-    { role: 'user', content: message },
-  ]);
+      const completion = await chatCompletion([
+        { role: 'system', content: systemPrompt },
+        ...historyMessages,
+        { role: 'user', content: message },
+      ]);
 
-  const response = completion.choices[0]?.message?.content || 'I apologize, but I could not generate a response.';
+      response = completion.choices[0]?.message?.content || 'I apologize, but I could not generate a response.';
+      completionId = completion.id || '';
+    }
+  } catch (error: any) {
+    logger.error('Failed to generate chat response', { 
+      error: error?.message || String(error), 
+      stack: error?.stack,
+      studentId: session.user.id, 
+      conversationId: convId 
+    });
+    
+    // Provide more specific error message
+    if (error?.message?.includes('API key') || error?.message?.includes('not configured')) {
+      response = 'I apologize, but the AI service is not configured. Please contact support.';
+    } else {
+      response = 'I apologize, but I encountered an error generating a response. Please try again.';
+    }
+  }
 
   // Save assistant message
   await db.insert(messages).values({
@@ -96,7 +138,7 @@ Instructions:
     content: response,
     metadata: {
       confidence: 0.95,
-      sources: relevantChunks.matches.map((match) => ({
+      sources: (relevantChunks.matches || []).map((match: any) => ({
         sessionId: String(match.metadata?.sessionId || ''),
         relevance: match.score || 0,
         excerpt: String(match.metadata?.excerpt || ''),
@@ -113,14 +155,14 @@ Instructions:
 
   return NextResponse.json({
     message: {
-      id: assistantMessage?.id || completion.id,
+      id: assistantMessage?.id || completionId || 'unknown',
       role: 'assistant' as const,
       content: response,
       timestamp: assistantMessage?.createdAt || new Date(),
-      sources: relevantChunks.matches.map((match) => ({
-        sessionId: match.metadata?.sessionId || '',
+      sources: (relevantChunks.matches || []).map((match: any) => ({
+        sessionId: String(match.metadata?.sessionId || ''),
         relevance: match.score || 0,
-        excerpt: match.metadata?.excerpt || '',
+        excerpt: String(match.metadata?.excerpt || ''),
       })),
       suggestTutor: response.toLowerCase().includes('tutor session'),
     },

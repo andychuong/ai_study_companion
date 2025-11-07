@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import { requireAuth } from '@/lib/auth/middleware';
 import { createApiHandler } from '@/lib/utils/api-handler';
 import { ForbiddenError } from '@/lib/utils/errors';
+import type { PracticeQuestion } from '@/types/database';
 
 async function handler(req: NextRequest, context?: { params?: Promise<Record<string, string>> | Record<string, string> }) {
   if (req.method !== 'GET') {
@@ -42,7 +43,15 @@ async function handler(req: NextRequest, context?: { params?: Promise<Record<str
       id: p.id,
       studentId: p.studentId,
       conceptId: undefined,
-      questions: p.questions as any[],
+      questions: (p.questions as PracticeQuestion[]).map((q) => ({
+        id: q.questionId,
+        question: q.question,
+        type: q.type,
+        options: q.options,
+        difficulty: q.difficulty,
+        correctAnswer: q.correct_answer || q.correctAnswer,
+        explanation: q.explanation,
+      })),
       assignedAt: p.assignedAt,
       completedAt: p.completedAt || undefined,
       score: p.score || undefined,

@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import { requireStudent } from '@/lib/auth/middleware';
 import { createApiHandler, parseJsonBody } from '@/lib/utils/api-handler';
 import { NotFoundError, ForbiddenError } from '@/lib/utils/errors';
+import type { PracticeQuestion } from '@/types/database';
 import { z } from 'zod';
 
 const submitSchema = z.object({
@@ -42,11 +43,7 @@ async function handler(req: NextRequest, context?: { params?: Promise<Record<str
   }
 
   // Calculate score
-  const questions = practice.questions as Array<{
-    questionId: string;
-    correct_answer?: string;
-    correctAnswer?: string;
-  }>;
+  const questions = practice.questions as PracticeQuestion[];
 
   let correctCount = 0;
   const feedback = answers.map((answer) => {

@@ -12,6 +12,7 @@
     "db:studio": "drizzle-kit studio",
     "type-check": "tsc --noEmit",
     "seed": "tsx --env-file=.env.local scripts/seed-test-data.ts",
+    "create-tutor": "tsx --env-file=.env.local scripts/create-tutor.ts",
     "inngest:dev": "npx inngest-cli@latest dev",
     "inngest:check": "tsx --env-file=.env.local scripts/check-inngest.ts"
   },

@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import { requireStudent } from '@/lib/auth/middleware';
 import { createApiHandler, parseJsonBody } from '@/lib/utils/api-handler';
 import { inngest } from '@/lib/inngest';
+import { logger } from '@/lib/utils/logger';
 import { z } from 'zod';
 
 const generateSchema = z.object({
@@ -54,11 +55,11 @@ async function handler(req: NextRequest) {
         },
       });
     } else {
-      console.warn('Inngest not configured. Practice generation will not run automatically.');
+      logger.warn('Inngest not configured. Practice generation will not run automatically.');
     }
   } catch (error) {
     // Log but don't fail the request if Inngest is not configured
-    console.warn('Failed to send Inngest event (Inngest may not be configured):', error);
+    logger.warn('Failed to send Inngest event (Inngest may not be configured)', { error, practiceId: practice.id });
   }
 
   return NextResponse.json({

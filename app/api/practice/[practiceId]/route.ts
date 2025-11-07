@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import { requireAuth } from '@/lib/auth/middleware';
 import { createApiHandler } from '@/lib/utils/api-handler';
 import { NotFoundError, ForbiddenError } from '@/lib/utils/errors';
+import type { PracticeQuestion } from '@/types/database';
 
 async function handler(req: NextRequest, context?: { params?: Promise<Record<string, string>> | Record<string, string> }) {
   if (req.method !== 'GET') {
@@ -36,8 +37,8 @@ async function handler(req: NextRequest, context?: { params?: Promise<Record<str
     id: practice.id,
     studentId: practice.studentId,
     conceptId: undefined,
-    questions: (practice.questions as any[]).map((q) => ({
-      id: q.questionId || q.id || Math.random().toString(),
+    questions: (practice.questions as PracticeQuestion[]).map((q) => ({
+      id: q.questionId,
       question: q.question,
       type: q.type,
       options: q.options,

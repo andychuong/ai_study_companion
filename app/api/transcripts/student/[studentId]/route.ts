@@ -5,6 +5,7 @@ import { eq, desc } from 'drizzle-orm';
 import { requireAuth } from '@/lib/auth/middleware';
 import { createApiHandler } from '@/lib/utils/api-handler';
 import { ForbiddenError } from '@/lib/utils/errors';
+import type { TranscriptSource, TranscriptFormat } from '@/types/database';
 
 async function handler(req: NextRequest, context?: { params?: Promise<Record<string, string>> | Record<string, string> }) {
   if (req.method !== 'GET') {
@@ -48,8 +49,8 @@ async function handler(req: NextRequest, context?: { params?: Promise<Record<str
       date: s.sessionDate,
       duration: s.duration,
       transcript: s.transcript,
-      transcriptSource: s.transcriptSource as any,
-      transcriptFormat: s.transcriptFormat as any,
+      transcriptSource: s.transcriptSource as TranscriptSource,
+      transcriptFormat: s.transcriptFormat as TranscriptFormat,
       topics: s.analysisData?.topics || [],
       concepts: (s.analysisData?.concepts || []).map((c: any) => ({
         id: c.id || Math.random().toString(),

@@ -63,7 +63,7 @@ export async function chatCompletion(
   }
 ): Promise<OpenAI.Chat.Completions.ChatCompletion> {
   if (!openai) {
-    throw new Error('OpenAI API key is not configured. Please add OPENAI_API_KEY to your .env.local file.');
+    throw new Error('OpenAI API key is not configured. Please add OPENAI_API_KEY to your environment variables.');
   }
   const model = options?.model || PRIMARY_MODEL;
   
@@ -77,7 +77,7 @@ export async function chatCompletion(
     });
   } catch (error: any) {
     // Fallback to GPT-3.5 if GPT-4 fails
-    if (error.status === 429 || error.status === 500) {
+    if (error?.status === 429 || error?.status === 500) {
       if (model !== FALLBACK_MODEL) {
         return chatCompletion(messages, {
           ...options,
