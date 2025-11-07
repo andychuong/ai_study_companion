@@ -85,8 +85,10 @@ Extract and return JSON with:
             studentId,
             sessionId,
             date: new Date().toISOString(),
-            topics: insights.topics_covered,
-            concepts: insights.concepts_taught.map((c) => c.name),
+            topics: insights.topics_covered || [],
+            concepts: (insights.concepts_taught || [])
+              .filter((c) => c && c.name && typeof c.name === 'string')
+              .map((c) => c.name),
           },
         }));
 
@@ -122,47 +124,80 @@ Extract and return JSON with:
 
     // Step 5: Update student concept mastery levels
     await step.run('update-mastery', async () => {
-      for (const conceptData of insights.concepts_taught) {
-        // Find or create concept
-        let concept = await db.query.concepts.findFirst({
-          where: eq(concepts.name, conceptData.name),
-        });
+      // Validate and filter out invalid concepts
+      const validConcepts = insights.concepts_taught.filter((conceptData) => {
+        return (
+          conceptData &&
+          typeof conceptData === 'object' &&
+          conceptData.name &&
+          typeof conceptData.name === 'string' &&
+          conceptData.name.trim().length > 0 &&
+          typeof conceptData.difficulty === 'number' &&
+          conceptData.difficulty >= 1 &&
+          conceptData.difficulty <= 10 &&
+          typeof conceptData.masteryLevel === 'number' &&
+          conceptData.masteryLevel >= 0 &&
+          conceptData.masteryLevel <= 100
+        );
+      });
 
-        if (!concept) {
-          const [newConcept] = await db
-            .insert(concepts)
-            .values({
-              name: conceptData.name,
-              subject: insights.topics_covered[0] || 'General',
-              difficulty: conceptData.difficulty,
-            })
-            .returning();
-          concept = newConcept;
-        }
+      if (validConcepts.length === 0) {
+        logger.warn('No valid concepts to update mastery for', { sessionId, studentId });
+        return;
+      }
 
-        // Update student concept mastery
-        const existing = await db.query.studentConcepts.findFirst({
-          where: and(
-            eq(studentConcepts.studentId, studentId),
-            eq(studentConcepts.conceptId, concept.id)
-          ),
-        });
-
-        if (existing) {
-          await db
-            .update(studentConcepts)
-            .set({
-              masteryLevel: Math.max(existing.masteryLevel, conceptData.masteryLevel),
-              lastPracticed: new Date(),
-            })
-            .where(eq(studentConcepts.id, existing.id));
-        } else {
-          await db.insert(studentConcepts).values({
-            studentId,
-            conceptId: concept.id,
-            masteryLevel: conceptData.masteryLevel,
-            lastPracticed: new Date(),
+      for (const conceptData of validConcepts) {
+        try {
+          // Find or create concept
+          let concept = await db.query.concepts.findFirst({
+            where: eq(concepts.name, conceptData.name.trim()),
           });
+
+          if (!concept) {
+            const [newConcept] = await db
+              .insert(concepts)
+              .values({
+                name: conceptData.name.trim(),
+                subject: insights.topics_covered?.[0] || 'General',
+                difficulty: conceptData.difficulty,
+              })
+              .returning();
+            concept = newConcept;
+          }
+
+          // Update student concept mastery
+          const existing = await db.query.studentConcepts.findFirst({
+            where: and(
+              eq(studentConcepts.studentId, studentId),
+              eq(studentConcepts.conceptId, concept.id)
+            ),
+          });
+
+          if (existing) {
+            await db
+              .update(studentConcepts)
+              .set({
+                masteryLevel: Math.max(existing.masteryLevel, conceptData.masteryLevel),
+                lastPracticed: new Date(),
+              })
+              .where(eq(studentConcepts.id, existing.id));
+          } else {
+            await db.insert(studentConcepts).values({
+              studentId,
+              conceptId: concept.id,
+              masteryLevel: conceptData.masteryLevel,
+              lastPracticed: new Date(),
+            });
+          }
+        } catch (error) {
+          logger.error('Failed to update mastery for concept', {
+            error,
+            sessionId,
+            studentId,
+            conceptName: conceptData?.name,
+            message: error instanceof Error ? error.message : 'Unknown error',
+          });
+          // Continue with next concept instead of failing entire step
         }
       }
     });
