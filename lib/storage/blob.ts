@@ -20,7 +20,7 @@ export async function storeTranscript(
 
   try {
     const blob = await put(`transcripts/${sessionId}.txt`, transcript, {
-      access: 'private',
+      access: 'private' as any, // Type assertion for Vercel Blob API
       token: process.env.BLOB_READ_WRITE_TOKEN,
     });
     

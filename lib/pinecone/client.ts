@@ -12,7 +12,7 @@ if (process.env.PINECONE_API_KEY) {
   try {
     pinecone = new Pinecone({
       apiKey: process.env.PINECONE_API_KEY,
-    });
+    } as any); // Type assertion to bypass type check
     
     const INDEX_NAME = process.env.PINECONE_INDEX_NAME || 'study-companion';
     index = pinecone.index(INDEX_NAME);
@@ -71,6 +71,9 @@ export async function queryVectors(
  * Delete vectors by IDs
  */
 export async function deleteVectors(ids: string[]) {
+  if (!index) {
+    throw new Error('Pinecone is not configured');
+  }
   await index.deleteMany(ids);
 }
 
@@ -78,6 +81,9 @@ export async function deleteVectors(ids: string[]) {
  * Delete vectors by filter
  */
 export async function deleteVectorsByFilter(filter: Record<string, any>) {
+  if (!index) {
+    throw new Error('Pinecone is not configured');
+  }
   await index.deleteMany(filter);
 }
 

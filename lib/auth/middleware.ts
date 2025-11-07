@@ -8,6 +8,7 @@ import { eq } from 'drizzle-orm';
 interface AuthUser {
   id: string;
   email: string;
+  name: string;
   role: string;
 }
 
@@ -49,6 +50,7 @@ export async function getSession(req?: NextRequest): Promise<AuthSession | null>
             user: {
               id: user.id,
               email: user.email,
+              name: user.name,
               role: user.role,
             },
           };

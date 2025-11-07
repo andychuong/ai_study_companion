@@ -123,7 +123,7 @@ async function seed() {
       { name: 'Molarity Calculations', subject: 'Chemistry', difficulty: 6 },
     ];
 
-    const createdConcepts = [];
+    const createdConcepts: Array<{ id: string; name: string; subject: string }> = [];
     for (const concept of conceptData) {
       const existing = await db.query.concepts.findFirst({
         where: (concepts, { and, eq }) => 
@@ -402,7 +402,7 @@ Tutor: Excellent work! Let's practice a few more problems...`,
         correctAnswer: q.correctAnswer,
         correct_answer: q.correctAnswer, // Include both for compatibility
         explanation: q.explanation,
-        conceptId: createdConcepts[0]?.id || uuidv4(), // Assign to first concept
+        conceptId: createdConcepts.length > 0 ? createdConcepts[0].id : uuidv4(), // Assign to first concept
       }));
 
       // Create answers array with proper question IDs if practice is completed

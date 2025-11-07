@@ -94,10 +94,18 @@ async function handler(req: NextRequest, context?: { params?: Promise<Record<str
              goal.subject.toLowerCase().includes(sessionSubject.toLowerCase());
     });
     
-    // Get practices related to this goal
+    // Get practices related to this goal (by session subject match)
     const goalPractices = practicesList.filter((p) => {
-      return p.subject?.toLowerCase() === goal.subject.toLowerCase() ||
-             p.topic?.toLowerCase().includes(goal.subject.toLowerCase());
+      // Match practices by session subject if sessionId exists
+      if (p.sessionId) {
+        const relatedSession = sessionsList.find((s) => s.id === p.sessionId);
+        if (relatedSession) {
+          const sessionSubject = relatedSession.analysisData?.topics?.[0] || '';
+          return sessionSubject.toLowerCase().includes(goal.subject.toLowerCase()) ||
+                 goal.subject.toLowerCase().includes(sessionSubject.toLowerCase());
+        }
+      }
+      return false;
     });
     
     const completedGoalPractices = goalPractices.filter((p) => p.status === 'completed');

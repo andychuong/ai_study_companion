@@ -1,5 +1,5 @@
 import { pgTable, uuid, varchar, text, integer, timestamp, jsonb, boolean, check, pgEnum } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 
 // Enums
 export const userRoleEnum = pgEnum('user_role', ['student', 'tutor', 'admin']);
@@ -66,7 +66,7 @@ export const concepts = pgTable('concepts', {
   difficulty: integer('difficulty').$type<number>(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
-  difficultyCheck: check('difficulty_check', 'difficulty >= 1 AND difficulty <= 10'),
+  difficultyCheck: check('difficulty_check', sql`${table.difficulty} >= 1 AND ${table.difficulty} <= 10`),
 }));
 
 // Student Concepts (Mastery Tracking)
@@ -79,8 +79,8 @@ export const studentConcepts = pgTable('student_concepts', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
-  masteryCheck: check('mastery_check', 'mastery_level >= 0 AND mastery_level <= 100'),
-  uniqueStudentConcept: check('unique_student_concept', `(${table.studentId}, ${table.conceptId}) IS UNIQUE`),
+  masteryCheck: check('mastery_check', sql`${table.masteryLevel} >= 0 AND ${table.masteryLevel} <= 100`),
+  uniqueStudentConcept: check('unique_student_concept', sql`(${table.studentId}, ${table.conceptId}) IS UNIQUE`),
 }));
 
 // Goals Table
@@ -96,7 +96,7 @@ export const goals = pgTable('goals', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
-  progressCheck: check('progress_check', 'progress >= 0 AND progress <= 100'),
+  progressCheck: check('progress_check', sql`${table.progress} >= 0 AND ${table.progress} <= 100`),
 }));
 
 // Practices Table
@@ -112,6 +112,9 @@ export const practices = pgTable('practices', {
     options?: string[];
     difficulty: number;
     conceptId: string;
+    correct_answer?: string;
+    correctAnswer?: string;
+    explanation?: string;
   }>>().notNull(),
   answers: jsonb('answers').$type<Array<{
     questionId: string;
@@ -151,7 +154,7 @@ export const messages = pgTable('messages', {
   }>(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
-  roleCheck: check('role_check', "role IN ('user', 'assistant')"),
+  roleCheck: check('role_check', sql`${table.role} IN ('user', 'assistant')`),
 }));
 
 // Subject Suggestions Table
@@ -167,7 +170,7 @@ export const subjectSuggestions = pgTable('subject_suggestions', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
-  statusCheck: check('status_check', "status IN ('pending', 'accepted', 'dismissed')"),
+  statusCheck: check('status_check', sql`${table.status} IN ('pending', 'accepted', 'dismissed')`),
 }));
 
 // Notifications Table (for engagement nudges and other notifications)
@@ -185,7 +188,7 @@ export const notifications = pgTable('notifications', {
   metadata: jsonb('metadata').$type<Record<string, any>>(), // Additional data
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
-  urgencyCheck: check('urgency_check', "urgency IN ('low', 'medium', 'high')"),
+  urgencyCheck: check('urgency_check', sql`${table.urgency} IN ('low', 'medium', 'high')`),
 }));
 
 // Relations

@@ -97,9 +97,9 @@ Instructions:
     metadata: {
       confidence: 0.95,
       sources: relevantChunks.matches.map((match) => ({
-        sessionId: match.metadata?.sessionId || '',
+        sessionId: String(match.metadata?.sessionId || ''),
         relevance: match.score || 0,
-        excerpt: match.metadata?.excerpt || '',
+        excerpt: String(match.metadata?.excerpt || ''),
       })),
       suggestTutor: response.toLowerCase().includes('tutor session'),
     },

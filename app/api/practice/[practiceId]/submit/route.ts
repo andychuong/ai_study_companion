@@ -44,13 +44,15 @@ async function handler(req: NextRequest, context?: { params?: Promise<Record<str
   // Calculate score
   const questions = practice.questions as Array<{
     questionId: string;
-    correct_answer: string;
+    correct_answer?: string;
+    correctAnswer?: string;
   }>;
 
   let correctCount = 0;
   const feedback = answers.map((answer) => {
     const question = questions.find((q) => q.questionId === answer.questionId);
-    const isCorrect = question?.correct_answer === answer.answer;
+    const correctAnswer = question?.correct_answer || question?.correctAnswer || '';
+    const isCorrect = correctAnswer === answer.answer;
     if (isCorrect) correctCount++;
     
     return {
@@ -58,7 +60,7 @@ async function handler(req: NextRequest, context?: { params?: Promise<Record<str
       correct: isCorrect,
       feedback: isCorrect
         ? 'Great job! You correctly identified the answer.'
-        : `The correct answer is: ${question?.correct_answer}`,
+        : `The correct answer is: ${correctAnswer}`,
     };
   });
 

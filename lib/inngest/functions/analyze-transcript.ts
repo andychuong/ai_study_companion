@@ -52,12 +52,12 @@ Extract and return JSON with:
     // Step 2: Chunk transcript and generate embeddings
     const chunks = await step.run('generate-embeddings', async () => {
       // Simple chunking: split by paragraphs, max 500 tokens per chunk
-      const paragraphs = transcript.split('\n\n').filter((p) => p.trim().length > 0);
+      const paragraphs = transcript.split('\n\n').filter((p: string) => p.trim().length > 0);
       const chunks: string[] = [];
       let currentChunk = '';
 
       for (const para of paragraphs) {
-        const words = para.split(' ');
+        const words: string[] = para.split(' ');
         if (currentChunk.split(' ').length + words.length > 500) {
           if (currentChunk) chunks.push(currentChunk);
           currentChunk = para;

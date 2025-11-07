@@ -35,33 +35,33 @@ async function getHandler() {
 let handlerCache: ReturnType<typeof serve> | null = null;
 
 // Export handlers or return 503 if Inngest is not configured
-export const GET = async (req: NextRequest) => {
+export const GET = async (req: NextRequest, context?: any) => {
   if (!handlerCache) {
     handlerCache = await getHandler();
   }
   if (!handlerCache) {
     return NextResponse.json({ error: 'Inngest is not configured' }, { status: 503 });
   }
-  return handlerCache.GET(req);
+  return handlerCache.GET(req, context);
 };
 
-export const POST = async (req: NextRequest) => {
+export const POST = async (req: NextRequest, context?: any) => {
   if (!handlerCache) {
     handlerCache = await getHandler();
   }
   if (!handlerCache) {
     return NextResponse.json({ error: 'Inngest is not configured' }, { status: 503 });
   }
-  return handlerCache.POST(req);
+  return handlerCache.POST(req, context);
 };
 
-export const PUT = async (req: NextRequest) => {
+export const PUT = async (req: NextRequest, context?: any) => {
   if (!handlerCache) {
     handlerCache = await getHandler();
   }
   if (!handlerCache) {
     return NextResponse.json({ error: 'Inngest is not configured' }, { status: 503 });
   }
-  return handlerCache.PUT(req);
+  return handlerCache.PUT(req, context);
 };
 

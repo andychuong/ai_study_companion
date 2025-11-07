@@ -1,7 +1,7 @@
 import { inngest } from '../client';
 import { db } from '@/lib/db';
 import { goals, subjectSuggestions, users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { chatCompletion, extractJSON } from '@/lib/openai/client';
 import { logger } from '@/lib/utils/logger';
 
