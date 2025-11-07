@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+    --background: 255 255 255;
+    --foreground: 15 23 42;
+    --border: 226 232 240;
+  }
+
+  * {
+    border-color: rgb(226 232 240);
+  }
+
+  body {
+    background-color: white;
+    color: rgb(15 23 42);
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Ensure button text is always visible */
+  button {
+    font-weight: 700;
+  }
+
+  button.bg-primary-600,
+  button[class*="bg-primary-600"] {
+    background-color: rgb(37 99 235) !important;
+    color: rgb(255 255 255) !important;
+  }
+
+  button.bg-error,
+  button[class*="bg-error"] {
+    background-color: rgb(239 68 68) !important;
+    color: rgb(255 255 255) !important;
+  }
+}
