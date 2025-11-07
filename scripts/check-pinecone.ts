@@ -48,28 +48,36 @@ async function checkPinecone() {
   
   try {
     // Pinecone v2+ only needs API key, no environment needed
+    // Use type assertion to match the actual client implementation
     const pinecone = new Pinecone({
       apiKey: apiKey,
-    });
+    } as any);
 
     console.log('✅ Pinecone client initialized');
 
     // List indexes
     console.log('\n📋 Listing Pinecone indexes...');
-    const indexes = await pinecone.listIndexes();
+    const indexesResponse = await pinecone.listIndexes();
     
-    console.log(`   Found ${indexes.indexes?.length || 0} index(es):`);
-    if (indexes.indexes && indexes.indexes.length > 0) {
-      indexes.indexes.forEach((idx: any) => {
-        const isTarget = idx.name === indexName;
-        console.log(`   ${isTarget ? '✅' : '  '} ${idx.name}${isTarget ? ' (target)' : ''}`);
+    // Pinecone SDK returns an array directly or an object with indexes property
+    const indexes = Array.isArray(indexesResponse) ? indexesResponse : (indexesResponse as any).indexes || [];
+    
+    console.log(`   Found ${indexes.length || 0} index(es):`);
+    if (indexes && indexes.length > 0) {
+      indexes.forEach((idx: any) => {
+        const idxName = idx.name || idx;
+        const isTarget = idxName === indexName;
+        console.log(`   ${isTarget ? '✅' : '  '} ${idxName}${isTarget ? ' (target)' : ''}`);
       });
     } else {
       console.log('   No indexes found');
     }
 
     // Check if target index exists
-    const targetIndex = indexes.indexes?.find((idx: any) => idx.name === indexName);
+    const targetIndex = indexes.find((idx: any) => {
+      const idxName = idx.name || idx;
+      return idxName === indexName;
+    });
     
     if (!targetIndex) {
       console.log(`\n❌ Index "${indexName}" not found!`);
@@ -88,9 +96,11 @@ async function checkPinecone() {
     try {
       const stats = await index.describeIndexStats();
       console.log('✅ Successfully connected to index');
-      console.log(`   Total vectors: ${stats.totalVectorCount || 0}`);
-      console.log(`   Dimension: ${stats.dimension || 'unknown'}`);
-      console.log(`   Index fullness: ${stats.indexFullness || 'unknown'}`);
+      // Pinecone SDK uses totalRecordCount, not totalVectorCount
+      const totalRecords = (stats as any).totalRecordCount || (stats as any).totalVectorCount || 0;
+      console.log(`   Total vectors: ${totalRecords}`);
+      console.log(`   Dimension: ${(stats as any).dimension || 'unknown'}`);
+      console.log(`   Index fullness: ${(stats as any).indexFullness || 'unknown'}`);
     } catch (error: any) {
       console.log(`❌ Failed to get index stats: ${error.message}`);
       return;
