@@ -19,12 +19,17 @@ export const analyzeTranscript = inngest.createFunction(
 ${transcript}
 
 Extract and return JSON with:
-- topics_covered: [list of topics]
-- concepts_taught: [list of concepts with difficulty 1-10 and masteryLevel 0-100]
+- topics_covered: [list of topics covered in the session]
+- concepts_taught: [list of specific concepts taught, each with:
+  - name: a clear, descriptive name for the concept (e.g., "Factoring Quadratics", "Quadratic Formula", "Discriminant Analysis")
+  - difficulty: number between 1-10 indicating concept difficulty
+  - masteryLevel: number between 0-100 indicating student's mastery level]
 - student_strengths: [identified strengths]
 - areas_for_improvement: [areas needing work]
 - action_items: [practice recommendations]
-- suggested_follow_up: [next session topics]`;
+- suggested_follow_up: [next session topics]
+
+IMPORTANT: Each concept in concepts_taught must have a descriptive "name" field (not just an ID or subject).`;
 
       const completion = await chatCompletion(
         [{ role: 'user', content: prompt }],
@@ -124,25 +129,49 @@ Extract and return JSON with:
 
     // Step 5: Update student concept mastery levels
     await step.run('update-mastery', async () => {
-      // Validate and filter out invalid concepts
-      const validConcepts = insights.concepts_taught.filter((conceptData) => {
-        return (
-          conceptData &&
-          typeof conceptData === 'object' &&
-          conceptData.name &&
-          typeof conceptData.name === 'string' &&
-          conceptData.name.trim().length > 0 &&
-          typeof conceptData.difficulty === 'number' &&
-          conceptData.difficulty >= 1 &&
-          conceptData.difficulty <= 10 &&
-          typeof conceptData.masteryLevel === 'number' &&
-          conceptData.masteryLevel >= 0 &&
-          conceptData.masteryLevel <= 100
-        );
-      });
+      // Validate and normalize concepts (handle both name and id formats)
+      const validConcepts = insights.concepts_taught
+        .map((conceptData) => {
+          // Normalize concept data - handle both formats
+          if (!conceptData || typeof conceptData !== 'object') {
+            return null;
+          }
+
+          // Get concept name - prefer name, fallback to id, or generate from subject
+          const conceptName = 
+            (conceptData.name && typeof conceptData.name === 'string' && conceptData.name.trim())
+            || (conceptData.id && typeof conceptData.id === 'string' && conceptData.id.trim())
+            || (conceptData.subject && typeof conceptData.subject === 'string' && conceptData.subject.trim())
+            || null;
+
+          // Validate required fields
+          if (
+            !conceptName ||
+            typeof conceptData.difficulty !== 'number' ||
+            conceptData.difficulty < 1 ||
+            conceptData.difficulty > 10 ||
+            typeof conceptData.masteryLevel !== 'number' ||
+            conceptData.masteryLevel < 0 ||
+            conceptData.masteryLevel > 100
+          ) {
+            return null;
+          }
+
+          return {
+            name: conceptName,
+            difficulty: conceptData.difficulty,
+            masteryLevel: conceptData.masteryLevel,
+            subject: conceptData.subject || insights.topics_covered?.[0] || 'General',
+          };
+        })
+        .filter((concept): concept is NonNullable<typeof concept> => concept !== null);
 
       if (validConcepts.length === 0) {
-        logger.warn('No valid concepts to update mastery for', { sessionId, studentId });
+        logger.warn('No valid concepts to update mastery for', { 
+          sessionId, 
+          studentId,
+          rawConcepts: insights.concepts_taught 
+        });
         return;
       }
 
@@ -150,15 +179,15 @@ Extract and return JSON with:
         try {
           // Find or create concept
           let concept = await db.query.concepts.findFirst({
-            where: eq(concepts.name, conceptData.name.trim()),
+            where: eq(concepts.name, conceptData.name),
           });
 
           if (!concept) {
             const [newConcept] = await db
               .insert(concepts)
               .values({
-                name: conceptData.name.trim(),
-                subject: insights.topics_covered?.[0] || 'General',
+                name: conceptData.name,
+                subject: conceptData.subject,
                 difficulty: conceptData.difficulty,
               })
               .returning();

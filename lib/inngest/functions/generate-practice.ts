@@ -59,13 +59,17 @@ export const generatePractice = inngest.createFunction(
     const practiceProblems = await step.run('generate-practice', async () => {
       const conceptsList = session.analysisData?.concepts || [];
       const conceptsText = conceptsList
-        .map((c) => `${c.name} (difficulty: ${c.difficulty}, mastery: ${c.masteryLevel}%)`)
+        .map((c) => {
+          // Handle concepts with name, id, or subject
+          const conceptName = c.name || c.id || c.subject || 'Unknown Concept';
+          return `${conceptName} (difficulty: ${c.difficulty || 5}, mastery: ${c.masteryLevel || 50}%)`;
+        })
         .join(', ');
 
       const prompt = `Generate adaptive practice problems for ${student.name || 'a student'}, a ${student.grade || 10}-grade student.
 
 Concepts covered in recent session:
-${conceptsText}
+${conceptsText || 'General concepts'}
 
 Student's current mastery level: ${targetDifficulty}/10
 Difficulty target: ${targetDifficulty}
@@ -77,7 +81,15 @@ Generate 5 practice problems that:
 4. Progress from easier to more challenging
 5. Include detailed answer explanations
 
-Return JSON array with fields: questionId, question, type, options (for multiple choice), difficulty, correct_answer, explanation, conceptId`;
+Return JSON with a "problems" array. Each problem must have:
+- questionId: unique identifier (string)
+- question: the question text (string)
+- type: question type (string: "multiple_choice", "short_answer", or "problem_solving")
+- options: array of options for multiple choice questions (optional, only for multiple_choice)
+- difficulty: number between 1-10 (number)
+- correct_answer: the correct answer (string)
+- explanation: detailed explanation (string)
+- conceptId: concept identifier or name (string)`;
 
       const completion = await chatCompletion(
         [{ role: 'user', content: prompt }],
@@ -89,14 +101,15 @@ Return JSON array with fields: questionId, question, type, options (for multiple
       );
 
       const response = extractJSON<{ problems: Array<{
-        questionId: string;
-        question: string;
-        type: string;
+        questionId?: string;
+        question?: string;
+        type?: string;
         options?: string[];
-        difficulty: number;
-        correct_answer: string;
-        explanation: string;
-        conceptId: string;
+        difficulty?: number;
+        correct_answer?: string;
+        correctAnswer?: string;
+        explanation?: string;
+        conceptId?: string;
       }> }>(completion);
 
       return response.problems || [];
@@ -104,36 +117,90 @@ Return JSON array with fields: questionId, question, type, options (for multiple
 
     // Step 6: Store practice
     await step.run('store-practice', async () => {
-      // Get concept IDs for questions
-      const questionsWithConceptIds = await Promise.all(
-        practiceProblems.map(async (problem) => {
-          let conceptId = problem.conceptId;
-          
-          // Find concept by name if ID not provided
-          if (!conceptId || conceptId === '') {
-            const concept = await db.query.concepts.findFirst({
-              where: eq(concepts.name, problem.conceptId || ''),
-            });
-            conceptId = concept?.id || '';
-          }
+      // Validate and normalize questions
+      const validQuestions = await Promise.all(
+        practiceProblems
+          .map(async (problem) => {
+            // Validate required fields
+            if (
+              !problem ||
+              typeof problem !== 'object' ||
+              !problem.questionId ||
+              typeof problem.questionId !== 'string' ||
+              problem.questionId.trim().length === 0 ||
+              !problem.question ||
+              typeof problem.question !== 'string' ||
+              problem.question.trim().length === 0 ||
+              !problem.type ||
+              typeof problem.type !== 'string' ||
+              typeof problem.difficulty !== 'number' ||
+              problem.difficulty < 1 ||
+              problem.difficulty > 10
+            ) {
+              return null;
+            }
 
-          return {
-            questionId: problem.questionId,
-            question: problem.question,
-            type: problem.type,
-            options: problem.options,
-            difficulty: problem.difficulty,
-            conceptId,
-            correct_answer: problem.correct_answer,
-            explanation: problem.explanation,
-          };
-        })
+            // Resolve concept ID
+            let conceptId = problem.conceptId || '';
+            
+            // If conceptId is provided, try to find the concept
+            if (conceptId && conceptId.trim().length > 0) {
+              // First try to find by ID (UUID)
+              let concept = await db.query.concepts.findFirst({
+                where: eq(concepts.id, conceptId),
+              });
+              
+              // If not found by ID, try to find by name
+              if (!concept) {
+                concept = await db.query.concepts.findFirst({
+                  where: eq(concepts.name, conceptId),
+                });
+              }
+              
+              if (concept) {
+                conceptId = concept.id;
+              } else {
+                // If concept not found, use the first concept from the session or create a placeholder
+                const sessionConcepts = session.analysisData?.concepts || [];
+                if (sessionConcepts.length > 0) {
+                  // Try to find concept by name/id from session
+                  const sessionConceptName = sessionConcepts[0].name || sessionConcepts[0].id || sessionConcepts[0].subject;
+                  const foundConcept = await db.query.concepts.findFirst({
+                    where: eq(concepts.name, sessionConceptName || ''),
+                  });
+                  conceptId = foundConcept?.id || '';
+                }
+              }
+            }
+
+            // If still no conceptId, use empty string (will be stored but not linked)
+            if (!conceptId || conceptId.trim().length === 0) {
+              conceptId = '';
+            }
+
+            return {
+              questionId: problem.questionId.trim(),
+              question: problem.question.trim(),
+              type: problem.type.trim(),
+              options: problem.options && Array.isArray(problem.options) ? problem.options : undefined,
+              difficulty: problem.difficulty,
+              conceptId: conceptId,
+              correct_answer: problem.correct_answer || problem.correctAnswer || '',
+              explanation: problem.explanation || '',
+            };
+          })
+          .then(results => results.filter((q): q is NonNullable<typeof q> => q !== null))
       );
+
+      if (validQuestions.length === 0) {
+        logger.warn('No valid questions to store', { practiceId, studentId, rawProblems: practiceProblems });
+        throw new Error('No valid questions generated');
+      }
 
       await db
         .update(practices)
         .set({
-          questions: questionsWithConceptIds,
+          questions: validQuestions,
           status: 'assigned',
           dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
         })
