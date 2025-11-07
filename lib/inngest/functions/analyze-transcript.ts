@@ -43,7 +43,9 @@ IMPORTANT: Each concept in concepts_taught must have a descriptive "name" field 
       return extractJSON<{
         topics_covered: string[];
         concepts_taught: Array<{
-          name: string;
+          name?: string;
+          id?: string;
+          subject?: string;
           difficulty: number;
           masteryLevel: number;
         }>;
