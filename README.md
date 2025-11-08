@@ -10,12 +10,20 @@ A comprehensive learning platform that bridges tutoring sessions with an AI comp
 - **Conversational Q&A**: Natural language interface for asking questions about past lessons
 - **Smart Tutor Routing**: Intelligently routes complex questions to human tutors
 - **Session Analysis**: Automatically analyzes tutor session transcripts and extracts insights
+- **Tutor-Student Workflow**: Complete booking system for students to schedule sessions with tutors
+- **Tutor Dashboard**: Comprehensive dashboard for tutors to manage students and view progress
 
 ### Retention Features
 - **Goal Completion Suggestions**: Automatically suggests related subjects when goals are completed
 - **Engagement Nudges**: Proactively nudges students with <3 sessions in their first week
 - **Multi-Goal Progress Tracking**: Track progress across multiple goals simultaneously
 - **Measurable Learning Improvements**: Data-driven analytics showing learning progress
+
+### Tutor Features
+- **Student Management**: View all students and their session history
+- **Student Detail Pages**: Comprehensive student profiles with strengths, areas for improvement, and progress
+- **Session Overview**: Track all sessions with students including status and analysis
+- **Progress Monitoring**: View student practice history and concept mastery
 
 ## Tech Stack
 
@@ -150,29 +158,37 @@ The application will be available at `http://localhost:3000`
 
 ## API Documentation
 
-### Authentication
+For comprehensive API documentation including all endpoints, request/response formats, authentication requirements, and examples, see [ENDPOINTS.md](./docs/ENDPOINTS.md).
+
+### Quick Reference
+
+**Authentication:**
 - `POST /api/auth/login` - User login
 - `POST /api/auth/register` - User registration
-- `POST /api/auth/refresh` - Refresh token
+- `GET /api/auth/me` - Get current user
 
-### Chat
-- `POST /api/chat/message` - Send message to AI companion
-- `GET /api/chat/conversation/:conversationId` - Get conversation history
+**Sessions:**
+- `POST /api/sessions/book` - Book tutoring session
 
-### Practice
+**Tutor Management:**
+- `GET /api/tutor/students` - Get tutor's students
+- `GET /api/tutor/context/student/[id]` - Get student context
+
+**Practice:**
 - `POST /api/practice/generate` - Generate practice problems
-- `GET /api/practice/:practiceId` - Get practice problems
-- `POST /api/practice/:practiceId/submit` - Submit practice answers
+- `GET /api/practice/[id]` - Get practice details
+- `POST /api/practice/[id]/submit` - Submit answers
+- `POST /api/practice/[id]/hint` - Get hint
+- `POST /api/practice/[id]/explain` - Get explanation
 
-### Goals & Progress
-- `GET /api/goals/student/:studentId` - Get student goals
+**Goals:**
+- `GET /api/goals/student/[id]` - Get student goals
 - `POST /api/goals` - Create new goal
-- `PUT /api/goals/:goalId/complete` - Mark goal as completed
-- `GET /api/progress/student/:studentId` - Get progress dashboard
+- `POST /api/goals/[id]/complete` - Mark goal as completed
 
-### Subject Suggestions
-- `GET /api/suggestions/student/:studentId` - Get subject suggestions
-- `POST /api/suggestions/:suggestionId/accept` - Accept suggestion
+**Chat:**
+- `POST /api/chat/message` - Send message to AI companion
+- `GET /api/chat/conversation/[id]` - Get conversation history
 
 ## Background Jobs (Inngest)
 
@@ -251,7 +267,10 @@ vercel
 ## Documentation
 
 - [Architecture](./docs/ARCHITECTURE.md) - System architecture
-- [Contributing](./CONTRIBUTING.md) - Contribution guidelines
+- [API Endpoints](./docs/ENDPOINTS.md) - Complete API documentation
+- [AI Tools and Prompting](./docs/AI_TOOLS_AND_PROMPTING.md) - AI tools and prompting strategies
+- [Cost Analysis](./docs/COST_ANALYSIS.md) - Production deployment cost analysis
+- [90-Day Roadmap](./docs/ROADMAP_90_DAYS.md) - Implementation roadmap
 
 ## Contributing
 

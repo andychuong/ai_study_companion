@@ -1,7 +1,7 @@
 # AI Study Companion - System Architecture
 
-**Document Version:** 1.0  
-**Last Updated:** November 7, 2025  
+**Document Version:** 1.1  
+**Last Updated:** November 2025  
 **Status:** Production Ready
 
 ---
@@ -340,6 +340,10 @@ CREATE INDEX idx_practices_session ON practices(session_id);
 
 ## API Architecture
 
+### API Documentation
+
+For comprehensive API endpoint documentation, including request/response formats, authentication requirements, and examples, see [ENDPOINTS.md](./ENDPOINTS.md).
+
 ### API Route Structure
 
 ```
@@ -347,36 +351,47 @@ CREATE INDEX idx_practices_session ON practices(session_id);
 ├── /auth
 │   ├── /login                 POST   - User authentication
 │   ├── /register             POST   - User registration
-│   └── /refresh              POST   - Token refresh
-├── /transcripts
-│   ├── /upload               POST   - Upload session transcript
-│   ├── /student/[id]         GET    - Get student's sessions
-│   └── /[id]                 GET    - Get specific session
-├── /practice
-│   ├── /generate             POST   - Generate practice problems
-│   ├── /[id]                 GET    - Get practice details
-│   └── /[id]/submit          POST   - Submit practice answers
-├── /goals
-│   ├── /student/[id]         GET    - Get student goals
-│   ├── /create               POST   - Create new goal
-│   └── /[id]/complete        POST   - Mark goal complete
-├── /suggestions
-│   ├── /student/[id]         GET    - Get student suggestions
-│   ├── /[id]/accept          POST   - Accept suggestion
-│   └── /[id]/dismiss         POST   - Dismiss suggestion
-├── /notifications
-│   ├── /student/[id]         GET    - Get notifications
-│   ├── /[id]/read            POST   - Mark as read
-│   └── /student/[id]/read-all POST  - Mark all as read
+│   └── /me                    GET    - Get current user
+├── /sessions
+│   └── /book                  POST   - Book tutoring session
 ├── /tutor
-│   ├── /routing/analyze      POST   - Analyze routing needs
+│   ├── /students              GET    - Get tutor's students
 │   ├── /context/student/[id] GET    - Get student context
-│   └── /list                 GET    - Get available tutors
+│   ├── /routing/analyze       POST   - Analyze routing needs
+│   └── /list                  GET    - Get available tutors
+├── /transcripts
+│   ├── /upload                POST   - Upload session transcript
+│   ├── /student/[id]          GET    - Get student's sessions
+│   └── /[id]                  GET    - Get specific session
+├── /practice
+│   ├── /generate              POST   - Generate practice problems
+│   ├── /[id]                  GET    - Get practice details
+│   ├── /[id]/submit           POST   - Submit practice answers
+│   ├── /[id]/hint             POST   - Get hint for question
+│   ├── /[id]/explain          POST   - Get explanation for question
+│   └── /student/[id]          GET    - Get student practices
+├── /goals
+│   ├── /student/[id]          GET    - Get student goals
+│   ├── /                      POST   - Create new goal
+│   ├── /[id]                  GET    - Get specific goal
+│   └── /[id]/complete         POST   - Mark goal complete
+├── /suggestions
+│   ├── /student/[id]          GET    - Get student suggestions
+│   ├── /[id]/accept           POST   - Accept suggestion
+│   └── /[id]/dismiss          POST   - Dismiss suggestion
+├── /notifications
+│   ├── /student/[id]          GET    - Get notifications
+│   ├── /[id]/read             POST   - Mark as read
+│   └── /student/[id]/read-all POST   - Mark all as read
 ├── /progress
-│   └── /student/[id]         GET    - Get student progress
+│   └── /student/[id]          GET    - Get student progress
+├── /analytics
+│   └── /learning-improvements/[id] GET - Get learning analytics
 ├── /chat
-│   └── /message              POST   - Send chat message
-└── /inngest                  GET/POST/PUT - Inngest webhook
+│   ├── /message               POST   - Send chat message
+│   ├── /conversation          POST   - Create conversation
+│   └── /conversation/[id]     GET    - Get conversation history
+└── /inngest                   POST   - Inngest webhook
 ```
 
 ### API Design Patterns
@@ -776,6 +791,8 @@ export async function requireTutor(req: NextRequest) {
 
 ## AI/ML Integration
 
+For comprehensive documentation on AI tools, models, and prompting strategies, see [AI_TOOLS_AND_PROMPTING.md](./AI_TOOLS_AND_PROMPTING.md).
+
 ### OpenAI Integration Architecture
 
 ```
@@ -783,7 +800,7 @@ Application Layer
        ↓
 OpenAI Client (lib/openai/client.ts)
        ↓
-GPT-4 Turbo API
+GPT-4o / GPT-3.5 Turbo API
        ↓
 Response Processing
        ↓
@@ -1431,6 +1448,15 @@ LEFT JOIN transcripts ON sessions.id = transcripts.session_id;
 - Document new patterns
 - Archive deprecated approaches
 
-**Last Reviewed:** November 7, 2025  
-**Next Review:** February 7, 2026
+**Last Reviewed:** November 2025  
+**Next Review:** February 2026
+
+---
+
+## Related Documentation
+
+- [ENDPOINTS.md](./ENDPOINTS.md) - Complete API endpoint documentation
+- [AI_TOOLS_AND_PROMPTING.md](./AI_TOOLS_AND_PROMPTING.md) - AI tools and prompting strategies
+- [COST_ANALYSIS.md](./COST_ANALYSIS.md) - Production deployment cost analysis
+- [ROADMAP_90_DAYS.md](./ROADMAP_90_DAYS.md) - 90-day implementation roadmap
 
