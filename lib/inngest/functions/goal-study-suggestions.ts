@@ -21,36 +21,31 @@ export const generateGoalStudySuggestions = inngest.createFunction(
       throw new Error('Missing required event data: goalId, studentId, or subject');
     }
 
-    // Step 1: Get goal details
-    const goal = await step.run('get-goal', async () => {
-      const goalData = await db.query.goals.findFirst({
-        where: eq(goals.id, goalId),
-      });
+    // Step 1-3: Parallelize database queries for speed
+    const [goal, student, otherGoals] = await step.run('fetch-data', async () => {
+      const [goalData, studentData, otherGoalsData] = await Promise.all([
+        db.query.goals.findFirst({
+          where: eq(goals.id, goalId),
+        }),
+        db.query.users.findFirst({
+          where: eq(users.id, studentId),
+        }),
+        db.query.goals.findMany({
+          where: and(
+            eq(goals.studentId, studentId),
+            eq(goals.status, 'active')
+          ),
+        }),
+      ]);
+
       if (!goalData) {
         throw new Error(`Goal ${goalId} not found`);
       }
-      return goalData;
-    });
-
-    // Step 2: Get student profile and history
-    const student = await step.run('get-student', async () => {
-      const studentData = await db.query.users.findFirst({
-        where: eq(users.id, studentId),
-      });
       if (!studentData) {
         throw new Error(`Student ${studentId} not found`);
       }
-      return studentData;
-    });
 
-    // Step 3: Get student's other goals for context
-    const otherGoals = await step.run('get-other-goals', async () => {
-      return db.query.goals.findMany({
-        where: and(
-          eq(goals.studentId, studentId),
-          eq(goals.status, 'active')
-        ),
-      });
+      return [goalData, studentData, otherGoalsData];
     });
 
     // Step 4: Generate study topic and practice suggestions using GPT-4
@@ -61,61 +56,59 @@ export const generateGoalStudySuggestions = inngest.createFunction(
           .map(g => g.subject)
           .join(', ') || 'None';
 
-        const prompt = `${student.name || 'A student'} has created a new learning goal:
+        // Optimized, more concise prompt for faster generation
+        const prompt = `Generate 5-7 study topic suggestions for a student's goal:
 
 Goal: ${goal.subject}
-Description: ${description || 'No description provided'}
-Target Date: ${goal.targetDate ? new Date(goal.targetDate).toLocaleDateString() : 'Not set'}
+Description: ${description || 'No description'}
+Grade: ${student.grade || 'Unknown'}
+Other goals: ${otherSubjects || 'None'}
 
-Student profile:
-- Grade: ${student.grade || 'Unknown'}
-- Other active goals: ${otherSubjects || 'None'}
-- Learning style: ${student.grade ? 'Standard' : 'Unknown'}
-
-Generate 5-7 study topic and practice suggestions that will help this student achieve their goal. Each suggestion should include:
-
-1. A specific study topic or concept to focus on
-2. Why this topic is important for achieving the goal
-3. Suggested practice activities or exercises
-4. Estimated difficulty level
-5. Prerequisites (if any)
-
-The suggestions should:
-- Be specific and actionable
-- Build a logical learning path toward the goal
-- Include both foundational concepts and advanced topics
-- Suggest concrete practice activities (e.g., "Practice solving quadratic equations", "Read and analyze 3 sample essays")
-- Be appropriate for the student's grade level
-- Consider their other active goals for context
-
-You MUST return a valid JSON object with a "suggestions" array. The response must be valid JSON and include exactly this structure:
-
+Return JSON with this structure:
 {
   "suggestions": [
     {
-      "topic": "Topic name (e.g., 'Quadratic Equations')",
-      "description": "Why this topic is important for the goal",
-      "practice_activities": ["Activity 1", "Activity 2", "Activity 3"],
+      "topic": "Topic name",
+      "description": "Why important for goal",
+      "practice_activities": ["Activity 1", "Activity 2"],
       "difficulty": "beginner|intermediate|advanced",
-      "prerequisites": ["Prerequisite 1", "Prerequisite 2"],
+      "prerequisites": ["Prereq 1"],
       "estimated_hours": 5,
       "relevance_score": 9
     }
   ]
 }
 
-Return 5-7 suggestions in the array. Each suggestion must have all required fields: topic, description, practice_activities, difficulty, prerequisites, estimated_hours, and relevance_score.`;
+Make suggestions specific, actionable, and appropriate for grade level. Include foundational and advanced topics. Return 5-7 suggestions.`;
 
         logger.info('Calling OpenAI to generate study suggestions', { goalId, studentId, subject });
         
-        const completion = await chatCompletion(
-          [{ role: 'user', content: prompt }],
-          {
-            model: 'gpt-4-turbo-preview',
-            responseFormat: { type: 'json_object' },
-            maxTokens: 3000,
-          }
-        );
+        // Use faster model: gpt-4o is faster than gpt-4-turbo-preview
+        // Try gpt-4o first, fallback to gpt-3.5-turbo for even faster generation if needed
+        let completion;
+        try {
+          completion = await chatCompletion(
+            [{ role: 'user', content: prompt }],
+            {
+              model: 'gpt-4o', // Faster than gpt-4-turbo-preview, maintains quality
+              responseFormat: { type: 'json_object' },
+              maxTokens: 2000, // Reduced from 3000 for faster generation
+              temperature: 0.7,
+            }
+          );
+        } catch (error: any) {
+          // If gpt-4o fails or is unavailable, fallback to faster gpt-3.5-turbo
+          logger.warn('gpt-4o failed, falling back to gpt-3.5-turbo for speed', { error, goalId });
+          completion = await chatCompletion(
+            [{ role: 'user', content: prompt }],
+            {
+              model: 'gpt-3.5-turbo', // Fastest option
+              responseFormat: { type: 'json_object' },
+              maxTokens: 2000,
+              temperature: 0.7,
+            }
+          );
+        }
 
         logger.info('OpenAI response received', { 
           goalId,
@@ -187,17 +180,13 @@ Return 5-7 suggestions in the array. Each suggestion must have all required fiel
       }
     });
 
-    // Step 5: Store suggestions in database
-    // We'll repurpose the subjectSuggestions table to store study topic suggestions
-    // Using the goalId (not completedGoalId) to link to the active goal
+    // Step 5: Store suggestions in database (batch insert for speed)
     await step.run('store-suggestions', async () => {
       try {
         logger.info('Storing study suggestions in database', { goalId, count: suggestions.length });
         
-        for (const suggestion of suggestions) {
-          // Store the topic as the "subject" field
-          // Store practice activities in the description
-          // Store difficulty and other metadata in valueProposition as JSON
+        // Batch insert all suggestions at once for better performance
+        const valuesToInsert = suggestions.map((suggestion) => {
           const metadata = {
             difficulty: suggestion.difficulty,
             prerequisites: suggestion.prerequisites,
@@ -205,15 +194,20 @@ Return 5-7 suggestions in the array. Each suggestion must have all required fiel
             practice_activities: suggestion.practice_activities,
           };
 
-          await db.insert(subjectSuggestions).values({
+          return {
             studentId,
             completedGoalId: goalId, // Using this field to link to the active goal
             subject: suggestion.topic,
             description: suggestion.description,
             relevanceScore: Math.round(suggestion.relevance_score),
             valueProposition: JSON.stringify(metadata),
-            status: 'pending',
-          });
+            status: 'pending' as const,
+          };
+        });
+
+        // Batch insert all at once instead of one-by-one
+        if (valuesToInsert.length > 0) {
+          await db.insert(subjectSuggestions).values(valuesToInsert);
         }
         
         logger.info('Study suggestions stored successfully', {

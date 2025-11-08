@@ -17,7 +17,9 @@ export const EMBEDDING_MODEL = 'text-embedding-3-large';
 export const EMBEDDING_DIMENSIONS = 3072;
 
 // LLM model configuration
-export const PRIMARY_MODEL = 'gpt-4-turbo-preview';
+// gpt-4o is faster than gpt-4-turbo-preview while maintaining quality
+export const PRIMARY_MODEL = 'gpt-4o';
+export const FAST_MODEL = 'gpt-3.5-turbo'; // Fastest option for speed-critical operations
 export const FALLBACK_MODEL = 'gpt-3.5-turbo';
 
 /**
