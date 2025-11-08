@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useGoals, useCompleteGoal, useUpdateGoal, useDeleteGoal } from "@/lib/hooks/useGoals";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { suggestionsApi } from "@/lib/api/suggestions";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CardSkeleton } from "@/components/ui/skeleton";
@@ -14,7 +13,6 @@ import { Target, Plus } from "lucide-react";
 import { CreateGoalForm } from "@/components/goals/CreateGoalForm";
 import { EditGoalForm } from "@/components/goals/EditGoalForm";
 import { GoalCard } from "@/components/goals/GoalCard";
-import { SuggestionsModal } from "@/components/goals/SuggestionsModal";
 import { Goal } from "@/types";
 
 export default function GoalsPage() {
@@ -25,49 +23,7 @@ export default function GoalsPage() {
   const deleteGoal = useDeleteGoal();
   const { addNotification } = useUIStore();
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
-  // Track which suggestions have already been shown to prevent spam
-  const shownSuggestionIdsRef = useRef<Set<string>>(new Set());
-
-  // Always fetch suggestions to check for new ones
-  const { data: suggestionsData, refetch: refetchSuggestions } = useQuery({
-    queryKey: ["suggestions", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return { suggestions: [] };
-      const response = await suggestionsApi.getStudentSuggestions(user.id);
-      return response.data;
-    },
-    enabled: !!user?.id,
-  });
-
-  // Check for pending suggestions when data changes
-  useEffect(() => {
-    if (suggestionsData?.suggestions && !showSuggestionsModal) {
-      const pendingSuggestions = suggestionsData.suggestions.filter(
-        (s) => s.status === "pending"
-      );
-      
-      // Only show suggestions that haven't been shown before
-      const newSuggestions = pendingSuggestions.filter(
-        (s) => !shownSuggestionIdsRef.current.has(s.suggestionId)
-      );
-      
-      // Only auto-show if there are new pending suggestions
-      if (newSuggestions.length > 0) {
-        // Mark these suggestions as shown
-        newSuggestions.forEach((s) => {
-          shownSuggestionIdsRef.current.add(s.suggestionId);
-        });
-        
-        // Small delay to avoid showing immediately on page load
-        const timer = setTimeout(() => {
-          setShowSuggestionsModal(true);
-        }, 1000);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [suggestionsData, showSuggestionsModal]);
 
   const handleComplete = async (goalId: string) => {
     try {
@@ -146,36 +102,12 @@ export default function GoalsPage() {
           onSuccess={async () => {
             setShowCreateForm(false);
             queryClient.invalidateQueries({ queryKey: ["goals", user?.id] });
-            
-            // Start checking for suggestions with exponential backoff
-            // The useEffect will automatically show the modal when new suggestions are detected
-            let attempts = 0;
-            const maxAttempts = 10; // Check for up to ~30 seconds
-            const checkForSuggestions = async () => {
-              attempts++;
-              try {
-                await refetchSuggestions();
-                const currentData = queryClient.getQueryData(["suggestions", user?.id]) as { suggestions: any[] } | undefined;
-                const pendingSuggestions = currentData?.suggestions?.filter(
-                  (s) => s.status === "pending" && !shownSuggestionIdsRef.current.has(s.suggestionId)
-                ) || [];
-                
-                // If we found new suggestions, the useEffect will handle showing the modal
-                // Otherwise, continue checking if we haven't reached max attempts
-                if (pendingSuggestions.length === 0 && attempts < maxAttempts) {
-                  // Exponential backoff: 2s, 3s, 4s, 5s, etc.
-                  setTimeout(checkForSuggestions, (attempts + 1) * 1000);
-                }
-              } catch (error) {
-                // If suggestions aren't ready yet, retry
-                if (attempts < maxAttempts) {
-                  setTimeout(checkForSuggestions, (attempts + 1) * 1000);
-                }
-              }
-            };
-            
-            // Start checking after initial delay
-            setTimeout(checkForSuggestions, 2000);
+            // Invalidate suggestions so they refresh in the suggestions tab
+            queryClient.invalidateQueries({ queryKey: ["suggestions", user?.id] });
+            addNotification({
+              type: "success",
+              message: "Goal created successfully! Check the Suggestions tab for study topics.",
+            });
           }}
         />
       )}
@@ -230,43 +162,6 @@ export default function GoalsPage() {
         </div>
       )}
 
-      {/* Suggestions Modal */}
-      {showSuggestionsModal && suggestionsData && (
-        <SuggestionsModal
-          suggestions={(suggestionsData.suggestions || []).filter((s) => s.status === "pending")}
-          onClose={() => {
-            setShowSuggestionsModal(false);
-            // Mark all visible suggestions as shown to prevent them from showing again
-            const visibleSuggestions = (suggestionsData.suggestions || []).filter(
-              (s) => s.status === "pending"
-            );
-            visibleSuggestions.forEach((s) => {
-              shownSuggestionIdsRef.current.add(s.suggestionId);
-            });
-            // Stop polling when modal is closed
-            queryClient.setQueryData(["suggestions", user?.id], suggestionsData);
-          }}
-          onAccept={(suggestionId) => {
-            // Mark as shown when accepted
-            shownSuggestionIdsRef.current.add(suggestionId);
-            suggestionsApi.acceptSuggestion(suggestionId).then(() => {
-              queryClient.invalidateQueries({ queryKey: ["suggestions", user?.id] });
-              queryClient.invalidateQueries({ queryKey: ["goals", user?.id] });
-              addNotification({
-                type: "success",
-                message: "Suggestion accepted! A new goal has been created.",
-              });
-            });
-          }}
-          onDismiss={(suggestionId) => {
-            // Mark as shown when dismissed
-            shownSuggestionIdsRef.current.add(suggestionId);
-            suggestionsApi.dismissSuggestion(suggestionId).then(() => {
-              queryClient.invalidateQueries({ queryKey: ["suggestions", user?.id] });
-            });
-          }}
-        />
-      )}
     </div>
   );
 }

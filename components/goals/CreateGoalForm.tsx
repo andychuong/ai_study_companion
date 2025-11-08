@@ -46,13 +46,9 @@ export function CreateGoalForm({ studentId, onClose, onSuccess }: CreateGoalForm
         description: data.description,
         targetDate: data.targetDate ? new Date(data.targetDate) : undefined,
       });
-      addNotification({
-        type: "success",
-        message: "Goal created successfully! Study suggestions will be available soon.",
-      });
       reset();
       onClose();
-      // Call onSuccess callback if provided
+      // Call onSuccess callback if provided (parent handles notification)
       if (onSuccess) {
         onSuccess();
       }
