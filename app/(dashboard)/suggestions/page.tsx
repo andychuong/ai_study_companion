@@ -218,7 +218,7 @@ function SuggestionCard({
     <Card className={isDismissed ? "opacity-60" : ""}>
       <CardHeader>
         <div className="flex items-start justify-between">
-          <CardTitle className="text-lg">{suggestion.topic || suggestion.subject}</CardTitle>
+          <CardTitle className="text-lg">{suggestion.topic}</CardTitle>
           <div className="flex items-center gap-2">
             {suggestion.relevanceScore !== null && (
               <Badge variant="info" className="flex items-center gap-1">

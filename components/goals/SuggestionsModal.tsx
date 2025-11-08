@@ -51,7 +51,7 @@ export function SuggestionsModal({ suggestions, onClose, onAccept, onDismiss }: 
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-lg">{suggestion.topic || suggestion.subject}</CardTitle>
+                    <CardTitle className="text-lg">{suggestion.topic}</CardTitle>
                     <div className="flex items-center gap-2 mt-2">
                       {suggestion.relevanceScore !== null && (
                         <Badge variant="info" className="flex items-center gap-1 w-fit">
