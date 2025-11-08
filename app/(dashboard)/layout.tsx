@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useUIStore } from "@/lib/stores/uiStore";
 import { 
@@ -15,7 +16,8 @@ import {
   Menu,
   X,
   LogOut,
-  User
+  User,
+  Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading";
@@ -64,14 +66,20 @@ export default function DashboardLayout({
     );
   }
 
-  const navigation = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Calendar", href: "/sessions/book", icon: Calendar },
-    { name: "Practice", href: "/practice", icon: BookOpen },
-    { name: "Sessions", href: "/sessions", icon: History },
-    { name: "Goals", href: "/goals", icon: Target },
-    { name: "Suggestions", href: "/suggestions", icon: Lightbulb },
-  ];
+  const navigation =
+    user?.role === "tutor"
+      ? [
+          { name: "Dashboard", href: "/tutor", icon: LayoutDashboard },
+          { name: "Students", href: "/tutor", icon: Users },
+        ]
+      : [
+          { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+          { name: "Calendar", href: "/sessions/book", icon: Calendar },
+          { name: "Practice", href: "/practice", icon: BookOpen },
+          { name: "Sessions", href: "/sessions", icon: History },
+          { name: "Goals", href: "/goals", icon: Target },
+          { name: "Suggestions", href: "/suggestions", icon: Lightbulb },
+        ];
 
   return (
     <div className="min-h-screen bg-secondary-50">
@@ -85,13 +93,26 @@ export default function DashboardLayout({
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-64 bg-white transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-50 h-full w-72 bg-white transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-4 border-b border-secondary-200">
-            <h1 className="text-xl font-bold text-primary-600">AI Study Companion</h1>
+            <Link 
+              href={user?.role === "tutor" ? "/tutor" : "/dashboard"}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity min-w-0"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <Image 
+                src="/logo.svg" 
+                alt="AI Study Companion Logo" 
+                width={32} 
+                height={32}
+                className="flex-shrink-0"
+              />
+              <h1 className="text-xl font-bold text-primary-600 whitespace-nowrap truncate">AI Study Companion</h1>
+            </Link>
             <button
               onClick={toggleSidebar}
               className="lg:hidden text-secondary-600 hover:text-secondary-900"
@@ -120,7 +141,7 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className="lg:pl-72">
         {/* Top bar */}
         <header className="sticky top-0 z-30 bg-white border-b border-secondary-200">
           <div className="flex items-center justify-between px-4 py-3">

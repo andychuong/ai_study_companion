@@ -40,14 +40,13 @@ export default function BookSessionPage() {
       sessionDate: Date;
       duration: number;
     }) => {
-      // TODO: Implement actual booking API call
-      // For now, just simulate success
-      return Promise.resolve({ success: true });
+      const response = await tutorApi.bookSession(bookingData);
+      return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       addNotification({
         type: "success",
-        message: "Session booked successfully! You'll receive a confirmation email shortly.",
+        message: `Session booked successfully with ${data.tutorName}! You'll receive a confirmation email shortly.`,
       });
       // Reset form
       setSelectedDate(null);

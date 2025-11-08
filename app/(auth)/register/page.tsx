@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -61,7 +62,12 @@ export default function RegisterPage() {
         type: "success",
         message: "Account created successfully!",
       });
-      router.push("/dashboard");
+      // Redirect based on role
+      if (data.role === "tutor") {
+        router.push("/tutor");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (error) {
       addNotification({
         type: "error",
@@ -74,9 +80,21 @@ export default function RegisterPage() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-2xl">Create an account</CardTitle>
-        <CardDescription>Get started with AI Study Companion</CardDescription>
+      <CardHeader className="space-y-4">
+        <div className="flex flex-col items-center gap-3">
+          <Image 
+            src="/logo.svg" 
+            alt="AI Study Companion Logo" 
+            width={48} 
+            height={48}
+            className="flex-shrink-0"
+          />
+          <h1 className="text-2xl font-bold text-primary-600">AI Study Companion</h1>
+        </div>
+        <div className="text-center">
+          <CardTitle className="text-2xl">Create an account</CardTitle>
+          <CardDescription>Get started with AI Study Companion</CardDescription>
+        </div>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

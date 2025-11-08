@@ -48,6 +48,40 @@ export interface TutorContext {
   }>;
 }
 
+export interface BookSessionRequest {
+  tutorId: string;
+  sessionDate: Date;
+  duration: number;
+}
+
+export interface BookSessionResponse {
+  sessionId: string;
+  tutorId: string;
+  tutorName: string;
+  sessionDate: Date;
+  duration: number;
+  message: string;
+}
+
+export interface TutorStudent {
+  id: string;
+  name: string;
+  email: string;
+  grade?: number;
+  totalSessions: number;
+  lastSessionDate: Date;
+  recentSessions: Array<{
+    id: string;
+    sessionDate: Date;
+    duration: number;
+    analysisStatus: string;
+  }>;
+}
+
+export interface TutorStudentsResponse {
+  students: TutorStudent[];
+}
+
 export const tutorApi = {
   /**
    * Analyze if student needs tutor routing
@@ -71,6 +105,24 @@ export const tutorApi = {
       ? `/tutor/context/student/${studentId}?topic=${encodeURIComponent(topic)}`
       : `/tutor/context/student/${studentId}`;
     return apiClient.get<TutorContext>(url);
+  },
+
+  /**
+   * Book a session with a tutor
+   */
+  bookSession: async (data: BookSessionRequest): Promise<AxiosResponse<BookSessionResponse>> => {
+    return apiClient.post<BookSessionResponse>('/sessions/book', {
+      tutorId: data.tutorId,
+      sessionDate: data.sessionDate.toISOString(),
+      duration: data.duration,
+    });
+  },
+
+  /**
+   * Get list of students for a tutor
+   */
+  getTutorStudents: async (): Promise<AxiosResponse<TutorStudentsResponse>> => {
+    return apiClient.get<TutorStudentsResponse>('/tutor/students');
   },
 };
 
