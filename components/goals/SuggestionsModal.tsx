@@ -60,12 +60,12 @@ export function SuggestionsModal({ suggestions, onClose, onAccept, onDismiss }: 
                         </Badge>
                       )}
                       {suggestion.difficulty && (
-                        <Badge variant="outline" className="capitalize">
+                        <Badge variant="default" className="capitalize">
                           {suggestion.difficulty}
                         </Badge>
                       )}
                       {suggestion.estimatedHours && (
-                        <Badge variant="outline">
+                        <Badge variant="default">
                           ~{suggestion.estimatedHours}h
                         </Badge>
                       )}

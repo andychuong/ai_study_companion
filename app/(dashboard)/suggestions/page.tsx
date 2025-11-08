@@ -227,7 +227,7 @@ function SuggestionCard({
               </Badge>
             )}
             {suggestion.difficulty && (
-              <Badge variant="outline" className="capitalize text-xs">
+              <Badge variant="default" className="capitalize text-xs">
                 {suggestion.difficulty}
               </Badge>
             )}
