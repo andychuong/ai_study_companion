@@ -168,14 +168,24 @@ Return JSON with a "problems" array. Each problem must have:
           // Resolve concept ID
           let conceptId = problem.conceptId || '';
           
+          // Helper function to check if a string is a valid UUID
+          const isValidUUID = (str: string): boolean => {
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            return uuidRegex.test(str);
+          };
+          
           // If conceptId is provided, try to find the concept
           if (conceptId && conceptId.trim().length > 0) {
-            // First try to find by ID (UUID)
-            let concept = await db.query.concepts.findFirst({
-              where: eq(concepts.id, conceptId),
-            });
+            let concept = null;
             
-            // If not found by ID, try to find by name
+            // Only try to find by ID if it's a valid UUID
+            if (isValidUUID(conceptId)) {
+              concept = await db.query.concepts.findFirst({
+                where: eq(concepts.id, conceptId),
+              });
+            }
+            
+            // If not found by ID (or not a UUID), try to find by name
             if (!concept) {
               concept = await db.query.concepts.findFirst({
                 where: eq(concepts.name, conceptId),
