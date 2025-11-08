@@ -8,6 +8,13 @@ export interface CreateGoalData {
   targetDate?: Date;
 }
 
+export interface UpdateGoalData {
+  subject?: string;
+  description?: string;
+  targetDate?: Date | null | undefined;
+  progress?: number;
+}
+
 export const goalsApi = {
   getGoals: (studentId: string) =>
     apiClient.get<Goal[]>(`/goals/student/${studentId}`),
@@ -18,7 +25,7 @@ export const goalsApi = {
   completeGoal: (goalId: string) =>
     apiClient.put<Goal>(`/goals/${goalId}/complete`),
 
-  updateGoal: (goalId: string, data: Partial<CreateGoalData>) =>
+  updateGoal: (goalId: string, data: UpdateGoalData) =>
     apiClient.put<Goal>(`/goals/${goalId}`, data),
 
   deleteGoal: (goalId: string) =>

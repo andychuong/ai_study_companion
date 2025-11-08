@@ -4,17 +4,19 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProgressBar } from "@/components/ui/progress";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { Goal } from "@/types";
 
 interface GoalCardProps {
   goal: Goal;
   onComplete?: (goalId: string) => void;
+  onEdit?: (goal: Goal) => void;
+  onDelete?: (goalId: string) => void;
   variant?: "active" | "completed";
 }
 
-export function GoalCard({ goal, onComplete, variant = "active" }: GoalCardProps) {
+export function GoalCard({ goal, onComplete, onEdit, onDelete, variant = "active" }: GoalCardProps) {
   return (
     <Card className={variant === "completed" ? "opacity-75" : ""}>
       <CardHeader>
@@ -44,25 +46,53 @@ export function GoalCard({ goal, onComplete, variant = "active" }: GoalCardProps
             <span className="font-medium">Created:</span>{" "}
             {format(new Date(goal.createdAt), "MMM d, yyyy")}
           </p>
-          {goal.completedAt && (
+          {goal.targetDate && variant === "active" && (
             <p>
-              <span className="font-medium">
-                {variant === "active" ? "Target:" : "Completed:"}
-              </span>{" "}
+              <span className="font-medium">Target:</span>{" "}
+              {format(new Date(goal.targetDate), "MMM d, yyyy")}
+            </p>
+          )}
+          {goal.completedAt && variant === "completed" && (
+            <p>
+              <span className="font-medium">Completed:</span>{" "}
               {format(new Date(goal.completedAt), "MMM d, yyyy")}
             </p>
           )}
         </div>
 
-        {variant === "active" && onComplete && (
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => onComplete(goal.id)}
-          >
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Mark as Complete
-          </Button>
+        {variant === "active" && (
+          <div className="flex gap-2">
+            {onEdit && (
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => onEdit(goal)}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => onDelete(goal.id)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            )}
+            {onComplete && (
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => onComplete(goal.id)}
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Complete
+              </Button>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>

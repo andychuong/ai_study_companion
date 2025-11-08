@@ -762,15 +762,15 @@ export async function requireTutor(req: NextRequest) {
 
 | Resource | Public | Student | Tutor | Admin |
 |----------|--------|---------|-------|-------|
-| Login | ✅ | ✅ | ✅ | ✅ |
-| Own Sessions | ❌ | ✅ | ✅ | ✅ |
-| All Sessions | ❌ | ❌ | ❌ | ✅ |
-| Upload Transcript | ❌ | ✅ | ✅ | ✅ |
-| Own Goals | ❌ | ✅ | ❌ | ✅ |
-| Own Practices | ❌ | ✅ | ❌ | ✅ |
-| Student Context | ❌ | ❌ | ✅ | ✅ |
-| Generate Practice | ❌ | ✅ | ✅ | ✅ |
-| AI Chat | ❌ | ✅ | ❌ | ✅ |
+| Login | Yes | Yes | Yes | Yes |
+| Own Sessions | No | Yes | Yes | Yes |
+| All Sessions | No | No | No | Yes |
+| Upload Transcript | No | Yes | Yes | Yes |
+| Own Goals | No | Yes | No | Yes |
+| Own Practices | No | Yes | No | Yes |
+| Student Context | No | No | Yes | Yes |
+| Generate Practice | No | Yes | Yes | Yes |
+| AI Chat | No | Yes | No | Yes |
 
 ---
 
@@ -1315,9 +1315,9 @@ LEFT JOIN transcripts ON sessions.id = transcripts.session_id;
 ### Scaling Considerations
 
 #### Horizontal Scaling
-- ✅ **API layer** - Automatic (Vercel serverless)
-- ✅ **Background jobs** - Automatic (Inngest)
-- ⚠️ **Database** - Neon connection pooling
+- **API layer** - Automatic (Vercel serverless)
+- **Background jobs** - Automatic (Inngest)
+- **Database** - Neon connection pooling (requires configuration)
 
 #### Vertical Scaling
 - Database: Upgrade Neon plan for more resources

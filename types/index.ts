@@ -23,9 +23,10 @@ export interface Goal {
   subject: string;
   description: string;
   status: "active" | "completed" | "paused";
+  progress: number; // 0-100
+  targetDate?: Date;
   createdAt: Date;
   completedAt?: Date;
-  progress: number; // 0-100
 }
 
 export interface Session {

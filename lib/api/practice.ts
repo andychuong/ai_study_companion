@@ -33,6 +33,17 @@ export interface GeneratePracticeResponse {
   message: string;
 }
 
+export interface GetHintResponse {
+  hint: string;
+  questionId: string;
+}
+
+export interface GetExplanationResponse {
+  explanation: string;
+  questionId: string;
+  correctAnswer?: string;
+}
+
 export const practiceApi = {
   generate: (data: GeneratePracticeData) =>
     apiClient.post<GeneratePracticeResponse>("/practice/generate", data),
@@ -45,5 +56,11 @@ export const practiceApi = {
 
   getStudentPractices: (studentId: string, params?: { status?: string; limit?: number; offset?: number }) =>
     apiClient.get<Practice[]>(`/practice/student/${studentId}`, { params }),
+
+  getHint: (practiceId: string, questionId: string) =>
+    apiClient.post<GetHintResponse>(`/practice/${practiceId}/hint`, { questionId }),
+
+  getExplanation: (practiceId: string, questionId: string, studentAnswer?: string) =>
+    apiClient.post<GetExplanationResponse>(`/practice/${practiceId}/explain`, { questionId, studentAnswer }),
 };
 

@@ -15,7 +15,6 @@ import {
   Calendar, 
   BookOpen, 
   TrendingUp,
-  MessageSquare,
   Plus,
   CheckCircle
 } from "lucide-react";
@@ -152,10 +151,10 @@ export default function DashboardPage() {
             <span>Start Practice</span>
           </Button>
         </Link>
-        <Link href="/chat">
+        <Link href="/sessions/book">
           <Button variant="outline" className="w-full h-auto py-6 flex flex-col items-center gap-2">
-            <MessageSquare className="h-6 w-6" />
-            <span>Chat with AI</span>
+            <Calendar className="h-6 w-6" />
+            <span>Schedule Tutor</span>
           </Button>
         </Link>
         <Link href="/sessions">

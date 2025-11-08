@@ -11,7 +11,7 @@ import { LoadingSpinner } from "@/components/ui/loading";
 import { Badge } from "@/components/ui/badge";
 import { useUIStore } from "@/lib/stores/uiStore";
 import { handleApiError } from "@/lib/api/errorHandler";
-import { ChevronLeft, ChevronRight, CheckCircle, XCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle, XCircle, Lightbulb, BookOpen } from "lucide-react";
 import { Question } from "@/types";
 
 export default function PracticeDetailPage() {
@@ -21,6 +21,10 @@ export default function PracticeDetailPage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [showResults, setShowResults] = useState(false);
+  const [hints, setHints] = useState<Record<string, string>>({});
+  const [explanations, setExplanations] = useState<Record<string, string>>({});
+  const [showHint, setShowHint] = useState<Record<string, boolean>>({});
+  const [showExplanation, setShowExplanation] = useState<Record<string, boolean>>({});
   const { addNotification } = useUIStore();
 
   const { data: practice, isLoading } = useQuery({
@@ -55,6 +59,59 @@ export default function PracticeDetailPage() {
       });
     },
   });
+
+  const hintMutation = useMutation({
+    mutationFn: async (questionId: string) => {
+      const response = await practiceApi.getHint(practiceId, questionId);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      setHints((prev) => ({ ...prev, [data.questionId]: data.hint }));
+      setShowHint((prev) => ({ ...prev, [data.questionId]: true }));
+    },
+    onError: (error) => {
+      addNotification({
+        type: "error",
+        message: handleApiError(error),
+      });
+    },
+  });
+
+  const explanationMutation = useMutation({
+    mutationFn: async (questionId: string) => {
+      const studentAnswer = answers[questionId];
+      const response = await practiceApi.getExplanation(practiceId, questionId, studentAnswer);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      setExplanations((prev) => ({ ...prev, [data.questionId]: data.explanation }));
+      setShowExplanation((prev) => ({ ...prev, [data.questionId]: true }));
+    },
+    onError: (error) => {
+      addNotification({
+        type: "error",
+        message: handleApiError(error),
+      });
+    },
+  });
+
+  const handleGetHint = () => {
+    const questionId = currentQuestion.id;
+    if (hints[questionId]) {
+      setShowHint((prev) => ({ ...prev, [questionId]: !prev[questionId] }));
+    } else {
+      hintMutation.mutate(questionId);
+    }
+  };
+
+  const handleGetExplanation = () => {
+    const questionId = currentQuestion.id;
+    if (explanations[questionId]) {
+      setShowExplanation((prev) => ({ ...prev, [questionId]: !prev[questionId] }));
+    } else {
+      explanationMutation.mutate(questionId);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -92,6 +149,7 @@ export default function PracticeDetailPage() {
   }
 
   const currentQuestion = practice.questions[currentQuestionIndex];
+  const currentQuestionId = currentQuestion.id;
   const isLastQuestion = currentQuestionIndex === practice.questions.length - 1;
   const isFirstQuestion = currentQuestionIndex === 0;
 
@@ -231,6 +289,58 @@ export default function PracticeDetailPage() {
               value={answers[currentQuestion.id] || ""}
               onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
             />
+          )}
+
+          {/* AI Hint and Explanation Buttons */}
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={handleGetHint}
+              loading={hintMutation.isPending}
+              className="flex-1"
+            >
+              <Lightbulb className="h-4 w-4 mr-2" />
+              {hints[currentQuestionId] && showHint[currentQuestionId]
+                ? "Hide Hint"
+                : "Get Hint"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleGetExplanation}
+              loading={explanationMutation.isPending}
+              className="flex-1"
+            >
+              <BookOpen className="h-4 w-4 mr-2" />
+              {explanations[currentQuestionId] && showExplanation[currentQuestionId]
+                ? "Hide Explanation"
+                : "Show Explanation"}
+            </Button>
+          </div>
+
+          {/* Display Hint */}
+          {hints[currentQuestionId] && showHint[currentQuestionId] && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <Lightbulb className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-blue-900 mb-1">Hint</p>
+                  <p className="text-blue-800">{hints[currentQuestionId]}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Display Explanation */}
+          {explanations[currentQuestionId] && showExplanation[currentQuestionId] && (
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <BookOpen className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-green-900 mb-1">Explanation</p>
+                  <p className="text-green-800">{explanations[currentQuestionId]}</p>
+                </div>
+              </div>
+            </div>
           )}
 
           <div className="flex items-center justify-between pt-4 border-t">

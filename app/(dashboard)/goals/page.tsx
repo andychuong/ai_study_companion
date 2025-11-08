@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
-import { useGoals, useCompleteGoal } from "@/lib/hooks/useGoals";
+import { useGoals, useCompleteGoal, useUpdateGoal, useDeleteGoal } from "@/lib/hooks/useGoals";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { suggestionsApi } from "@/lib/api/suggestions";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,17 +12,21 @@ import { useUIStore } from "@/lib/stores/uiStore";
 import { handleApiError } from "@/lib/api/errorHandler";
 import { Target, Plus } from "lucide-react";
 import { CreateGoalForm } from "@/components/goals/CreateGoalForm";
+import { EditGoalForm } from "@/components/goals/EditGoalForm";
 import { GoalCard } from "@/components/goals/GoalCard";
 import { SuggestionsModal } from "@/components/goals/SuggestionsModal";
+import { Goal } from "@/types";
 
 export default function GoalsPage() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const { data: goals, isLoading } = useGoals(user?.id || "");
   const completeGoal = useCompleteGoal();
+  const deleteGoal = useDeleteGoal();
   const { addNotification } = useUIStore();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
 
   // Fetch suggestions when modal is shown
   const { data: suggestionsData } = useQuery({
@@ -72,6 +76,29 @@ export default function GoalsPage() {
     }
   };
 
+  const handleEdit = (goal: Goal) => {
+    setEditingGoal(goal);
+  };
+
+  const handleDelete = async (goalId: string) => {
+    if (!confirm("Are you sure you want to delete this goal? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      await deleteGoal.mutateAsync(goalId);
+      addNotification({
+        type: "success",
+        message: "Goal deleted successfully",
+      });
+    } catch (error) {
+      addNotification({
+        type: "error",
+        message: handleApiError(error),
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -111,6 +138,14 @@ export default function GoalsPage() {
         />
       )}
 
+      {/* Edit Goal Form */}
+      {editingGoal && (
+        <EditGoalForm
+          goal={editingGoal}
+          onClose={() => setEditingGoal(null)}
+        />
+      )}
+
       {/* Active Goals */}
       <div>
         <h2 className="text-xl font-semibold text-secondary-900 mb-4">Active Goals</h2>
@@ -133,6 +168,8 @@ export default function GoalsPage() {
                 goal={goal}
                 variant="active"
                 onComplete={handleComplete}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
               />
             ))}
           </div>

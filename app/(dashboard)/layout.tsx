@@ -7,11 +7,11 @@ import { useAuthStore } from "@/lib/stores/authStore";
 import { useUIStore } from "@/lib/stores/uiStore";
 import { 
   LayoutDashboard, 
-  MessageSquare, 
   BookOpen, 
   History, 
   Target,
   Lightbulb,
+  Calendar,
   Menu,
   X,
   LogOut,
@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { DashboardFooter } from "@/components/layout/DashboardFooter";
 
 export default function DashboardLayout({
   children,
@@ -65,7 +66,7 @@ export default function DashboardLayout({
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Chat", href: "/chat", icon: MessageSquare },
+    { name: "Calendar", href: "/sessions/book", icon: Calendar },
     { name: "Practice", href: "/practice", icon: BookOpen },
     { name: "Sessions", href: "/sessions", icon: History },
     { name: "Goals", href: "/goals", icon: Target },
@@ -84,7 +85,7 @@ export default function DashboardLayout({
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-secondary-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-50 h-full w-64 bg-white transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -115,31 +116,6 @@ export default function DashboardLayout({
               );
             })}
           </nav>
-
-          <div className="p-4 border-t border-secondary-200">
-            <div className="flex items-center gap-3 px-4 py-2 mb-2">
-              <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
-                <User className="h-5 w-5 text-primary-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-secondary-900 truncate">
-                  {user?.name}
-                </p>
-                <p className="text-xs text-secondary-500 truncate">{user?.email}</p>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => {
-                logout();
-                router.push("/login");
-              }}
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign out
-            </Button>
-          </div>
         </div>
       </aside>
 
@@ -155,13 +131,44 @@ export default function DashboardLayout({
               <Menu className="h-6 w-6" />
             </button>
             <div className="flex-1" />
-            <NotificationBell />
+            <div className="flex items-center gap-4">
+              {/* Notification Bell */}
+              <NotificationBell />
+              {/* User info */}
+              <div className="hidden md:flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
+                  <User className="h-5 w-5 text-primary-600" />
+                </div>
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium text-secondary-900">
+                    {user?.name}
+                  </p>
+                  <p className="text-xs text-secondary-500">{user?.email}</p>
+                </div>
+              </div>
+              {/* Sign out button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  logout();
+                  router.push("/login");
+                }}
+                className="flex items-center gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Sign out</span>
+              </Button>
+            </div>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="p-4 lg:p-8">{children}</main>
+        <main className="p-4 lg:p-8 pb-20">{children}</main>
       </div>
+      
+      {/* Footer */}
+      <DashboardFooter />
     </div>
   );
 }

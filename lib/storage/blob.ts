@@ -1,4 +1,5 @@
 import { put } from '@vercel/blob';
+import { logger } from '@/lib/utils/logger';
 
 if (!process.env.BLOB_READ_WRITE_TOKEN) {
   console.warn('BLOB_READ_WRITE_TOKEN is not set. Blob storage will not work.');
@@ -14,7 +15,7 @@ export async function storeTranscript(
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     // Return a placeholder URL if blob storage is not configured
     // In production, this should throw an error
-    console.warn('Blob storage not configured, skipping storage');
+    logger.warn('Blob storage not configured, skipping storage', { sessionId });
     return `placeholder://transcripts/${sessionId}.txt`;
   }
 
@@ -26,7 +27,7 @@ export async function storeTranscript(
     
     return blob.url;
   } catch (error) {
-    console.error('Failed to store transcript in blob storage:', error);
+    logger.error('Failed to store transcript in blob storage', { error, sessionId });
     // Return placeholder URL if storage fails
     return `placeholder://transcripts/${sessionId}.txt`;
   }

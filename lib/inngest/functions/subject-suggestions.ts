@@ -101,7 +101,7 @@ Return JSON array: [{
           completedGoalId: goalId,
           subject: suggestion.subject,
           description: suggestion.description,
-          relevanceScore: suggestion.relevance_score,
+          relevanceScore: Math.round(suggestion.relevance_score), // Round to integer
           valueProposition: suggestion.value_proposition,
           status: 'pending',
         });

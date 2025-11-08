@@ -35,9 +35,12 @@ export async function getSession(req?: NextRequest): Promise<AuthSession | null>
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       try {
+        if (!process.env.NEXTAUTH_SECRET) {
+          throw new Error('NEXTAUTH_SECRET is not configured');
+        }
         const decoded = jwt.verify(
           token,
-          process.env.NEXTAUTH_SECRET || 'fallback-secret-change-in-production'
+          process.env.NEXTAUTH_SECRET
         ) as { id: string; email: string; role: string };
 
         // Verify user still exists

@@ -35,3 +35,33 @@ export function useCompleteGoal() {
   });
 }
 
+export interface UpdateGoalData {
+  subject?: string;
+  description?: string;
+  targetDate?: Date | null;
+  progress?: number;
+}
+
+export function useUpdateGoal() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ goalId, data }: { goalId: string; data: UpdateGoalData }) =>
+      goalsApi.updateGoal(goalId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["goals"] });
+    },
+  });
+}
+
+export function useDeleteGoal() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (goalId: string) => goalsApi.deleteGoal(goalId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["goals"] });
+    },
+  });
+}
+

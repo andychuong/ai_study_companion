@@ -11,10 +11,11 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "type-check": "tsc --noEmit",
-    "seed": "tsx --env-file=.env.local scripts/seed-test-data.ts",
-    "create-tutor": "tsx --env-file=.env.local scripts/create-tutor.ts",
+    "seed": "tsx --env-file=.env.local scripts/dev/seed-test-data.ts",
+    "seed:comprehensive": "tsx --env-file=.env.local scripts/dev/seed-comprehensive.ts",
+    "create-tutor": "tsx --env-file=.env.local scripts/dev/create-tutor.ts",
     "inngest:dev": "npx inngest-cli@latest dev",
-    "inngest:check": "tsx --env-file=.env.local scripts/check-inngest.ts"
+    "inngest:check": "tsx --env-file=.env.local scripts/dev/check-inngest.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

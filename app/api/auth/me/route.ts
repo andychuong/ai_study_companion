@@ -20,9 +20,12 @@ async function handler(req: NextRequest) {
 
   try {
     // Verify token
+    if (!process.env.NEXTAUTH_SECRET) {
+      return NextResponse.json({ error: 'Authentication not configured' }, { status: 500 });
+    }
     const decoded = jwt.verify(
       token,
-      process.env.NEXTAUTH_SECRET || 'fallback-secret-change-in-production'
+      process.env.NEXTAUTH_SECRET
     ) as { id: string; email: string; role: string };
 
     // Get user from database

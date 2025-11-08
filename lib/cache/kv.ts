@@ -1,4 +1,5 @@
 import { kv } from '@vercel/kv';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * Get cached value
@@ -8,7 +9,7 @@ export async function getCached<T>(key: string): Promise<T | null> {
     const value = await kv.get<T>(key);
     return value;
   } catch (error) {
-    console.error('Cache get error:', error);
+    logger.error('Cache get error', { error, key });
     return null;
   }
 }
@@ -24,7 +25,7 @@ export async function setCached<T>(
   try {
     await kv.set(key, value, { ex: ttl });
   } catch (error) {
-    console.error('Cache set error:', error);
+    logger.error('Cache set error', { error, key });
   }
 }
 
@@ -35,7 +36,7 @@ export async function deleteCached(key: string): Promise<void> {
   try {
     await kv.del(key);
   } catch (error) {
-    console.error('Cache delete error:', error);
+    logger.error('Cache delete error', { error, key });
   }
 }
 

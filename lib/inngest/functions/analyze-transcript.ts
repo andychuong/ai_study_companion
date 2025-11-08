@@ -241,12 +241,25 @@ IMPORTANT: Each concept in concepts_taught must have a descriptive "name" field 
     });
 
     // Step 6: Trigger practice generation
-    await step.sendEvent('practice.generate', {
-      name: 'practice.generate',
-      data: {
-        sessionId,
-        studentId,
-      },
+    await step.run('trigger-practice-generation', async () => {
+      try {
+        await inngest.send({
+          name: 'practice.generate',
+          data: {
+            sessionId,
+            studentId,
+          },
+        });
+        logger.info('Practice generation event sent', { sessionId, studentId });
+      } catch (error) {
+        logger.error('Failed to send practice generation event', {
+          error,
+          sessionId,
+          studentId,
+          message: error instanceof Error ? error.message : 'Unknown error',
+        });
+        // Don't fail the entire analysis if practice generation event fails
+      }
     });
 
     logger.info('Transcript analysis completed', { sessionId, studentId });

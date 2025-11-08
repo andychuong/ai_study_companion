@@ -38,13 +38,16 @@ async function handler(req: NextRequest) {
   }
 
   // Generate JWT token
+  if (!process.env.NEXTAUTH_SECRET) {
+    throw new Error('NEXTAUTH_SECRET is not configured');
+  }
   const token = jwt.sign(
     {
       id: user.id,
       email: user.email,
       role: user.role,
     },
-    process.env.NEXTAUTH_SECRET || 'fallback-secret-change-in-production',
+    process.env.NEXTAUTH_SECRET,
     { expiresIn: '7d' }
   );
 
