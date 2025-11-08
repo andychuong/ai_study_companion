@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useGoals, useCompleteGoal, useUpdateGoal, useDeleteGoal } from "@/lib/hooks/useGoals";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -28,16 +28,33 @@ export default function GoalsPage() {
   const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
 
-  // Fetch suggestions when modal is shown
-  const { data: suggestionsData } = useQuery({
+  // Always fetch suggestions to check for new ones
+  const { data: suggestionsData, refetch: refetchSuggestions } = useQuery({
     queryKey: ["suggestions", user?.id],
     queryFn: async () => {
       if (!user?.id) return { suggestions: [] };
       const response = await suggestionsApi.getStudentSuggestions(user.id);
       return response.data;
     },
-    enabled: !!user?.id && showSuggestionsModal,
+    enabled: !!user?.id,
   });
+
+  // Check for pending suggestions when data changes
+  useEffect(() => {
+    if (suggestionsData?.suggestions && !showSuggestionsModal) {
+      const pendingSuggestions = suggestionsData.suggestions.filter(
+        (s) => s.status === "pending"
+      );
+      // Only auto-show if there are pending suggestions and user hasn't dismissed the modal
+      if (pendingSuggestions.length > 0) {
+        // Small delay to avoid showing immediately on page load
+        const timer = setTimeout(() => {
+          setShowSuggestionsModal(true);
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [suggestionsData, showSuggestionsModal]);
 
   const handleComplete = async (goalId: string) => {
     try {
@@ -115,24 +132,36 @@ export default function GoalsPage() {
           onClose={() => setShowCreateForm(false)}
           onSuccess={async () => {
             setShowCreateForm(false);
-            // Wait a moment for Inngest to generate suggestions, then check
-            setTimeout(async () => {
-              queryClient.invalidateQueries({ queryKey: ["suggestions", user?.id] });
-              queryClient.invalidateQueries({ queryKey: ["goals", user?.id] });
-              // Check for new suggestions
+            queryClient.invalidateQueries({ queryKey: ["goals", user?.id] });
+            
+            // Start checking for suggestions with exponential backoff
+            let attempts = 0;
+            const maxAttempts = 10; // Check for up to ~30 seconds
+            const checkForSuggestions = async () => {
+              attempts++;
               try {
-                const response = await suggestionsApi.getStudentSuggestions(user.id);
-                const pendingSuggestions = response.data.suggestions.filter(
+                await refetchSuggestions();
+                const currentData = queryClient.getQueryData(["suggestions", user?.id]) as { suggestions: any[] } | undefined;
+                const pendingSuggestions = currentData?.suggestions?.filter(
                   (s) => s.status === "pending"
-                );
+                ) || [];
+                
                 if (pendingSuggestions.length > 0) {
                   setShowSuggestionsModal(true);
+                } else if (attempts < maxAttempts) {
+                  // Exponential backoff: 2s, 3s, 4s, 5s, etc.
+                  setTimeout(checkForSuggestions, (attempts + 1) * 1000);
                 }
               } catch (error) {
-                // If suggestions aren't ready yet, that's okay
-                console.log("Suggestions not ready yet");
+                // If suggestions aren't ready yet, retry
+                if (attempts < maxAttempts) {
+                  setTimeout(checkForSuggestions, (attempts + 1) * 1000);
+                }
               }
-            }, 3000);
+            };
+            
+            // Start checking after initial delay
+            setTimeout(checkForSuggestions, 2000);
           }}
         />
       )}
@@ -190,8 +219,12 @@ export default function GoalsPage() {
       {/* Suggestions Modal */}
       {showSuggestionsModal && suggestionsData && (
         <SuggestionsModal
-          suggestions={suggestionsData.suggestions.filter((s) => s.status === "pending")}
-          onClose={() => setShowSuggestionsModal(false)}
+          suggestions={(suggestionsData.suggestions || []).filter((s) => s.status === "pending")}
+          onClose={() => {
+            setShowSuggestionsModal(false);
+            // Stop polling when modal is closed
+            queryClient.setQueryData(["suggestions", user?.id], suggestionsData);
+          }}
           onAccept={(suggestionId) => {
             suggestionsApi.acceptSuggestion(suggestionId).then(() => {
               queryClient.invalidateQueries({ queryKey: ["suggestions", user?.id] });

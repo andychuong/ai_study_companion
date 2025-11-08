@@ -34,13 +34,19 @@ async function handler(req: NextRequest) {
     })
     .returning();
 
-  // Trigger study suggestion generation (optional - skip if Inngest not configured)
+  // Trigger study suggestion generation
+  // In local dev, try to send even without INNGEST_EVENT_KEY (Inngest dev server may be running)
   try {
-    if (process.env.INNGEST_EVENT_KEY) {
+    const isLocalDev = process.env.NODE_ENV === 'development';
+    const hasEventKey = !!process.env.INNGEST_EVENT_KEY;
+    
+    if (isLocalDev || hasEventKey) {
       logger.info('Sending goal.created event to Inngest', { 
         goalId: goal.id, 
         studentId: session.user.id, 
-        subject: goal.subject 
+        subject: goal.subject,
+        isLocalDev,
+        hasEventKey
       });
       const result = await inngest.send({
         name: 'goal.created',
@@ -53,7 +59,7 @@ async function handler(req: NextRequest) {
       });
       logger.info('Inngest event sent successfully', { goalId: goal.id, eventIds: result.ids });
     } else {
-      logger.warn('INNGEST_EVENT_KEY not set, skipping study suggestion generation', { goalId: goal.id });
+      logger.warn('INNGEST_EVENT_KEY not set and not in dev mode, skipping study suggestion generation', { goalId: goal.id });
     }
   } catch (error) {
     // Log but don't fail the request if Inngest is not configured
