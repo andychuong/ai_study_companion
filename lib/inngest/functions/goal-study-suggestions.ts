@@ -22,7 +22,7 @@ export const generateGoalStudySuggestions = inngest.createFunction(
     }
 
     // Step 1-3: Parallelize database queries for speed
-    const [goal, student, otherGoals] = await step.run('fetch-data', async () => {
+    const result = await step.run('fetch-data', async () => {
       const [goalData, studentData, otherGoalsData] = await Promise.all([
         db.query.goals.findFirst({
           where: eq(goals.id, goalId),
@@ -45,8 +45,16 @@ export const generateGoalStudySuggestions = inngest.createFunction(
         throw new Error(`Student ${studentId} not found`);
       }
 
-      return [goalData, studentData, otherGoalsData];
+      return {
+        goal: goalData,
+        student: studentData,
+        otherGoals: otherGoalsData || [],
+      };
     });
+
+    const goal = result.goal;
+    const student = result.student;
+    const otherGoals = result.otherGoals;
 
     // Step 4: Generate study topic and practice suggestions using GPT-4
     const suggestions = await step.run('generate-suggestions', async () => {
