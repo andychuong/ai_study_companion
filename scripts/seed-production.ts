@@ -152,7 +152,7 @@ async function seed() {
       { name: 'Cell Biology', subject: 'Biology', difficulty: 5 },
     ];
 
-    const createdConcepts = [];
+    const createdConcepts: Array<typeof concepts.$inferSelect> = [];
     for (const concept of conceptData) {
       const existing = await db.query.concepts.findFirst({
         where: and(
@@ -195,7 +195,7 @@ async function seed() {
       },
     ];
 
-    const createdGoals = [];
+    const createdGoals: Array<typeof goals.$inferSelect> = [];
     for (const goal of goalData) {
       const [created] = await db.insert(goals).values({
         studentId: student.id,
@@ -244,7 +244,7 @@ async function seed() {
       },
     ];
 
-    const createdSessions = [];
+    const createdSessions: Array<typeof sessions.$inferSelect> = [];
     for (const session of sessionData) {
       const [created] = await db.insert(sessions).values({
         studentId: student.id,
