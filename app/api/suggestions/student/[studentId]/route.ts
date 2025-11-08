@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { subjectSuggestions } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { subjectSuggestions, goals } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { requireAuth } from '@/lib/auth/middleware';
 import { createApiHandler } from '@/lib/utils/api-handler';
 import { ForbiddenError } from '@/lib/utils/errors';
@@ -25,9 +25,43 @@ async function handler(req: NextRequest, context?: { params?: Promise<Record<str
   }
 
   // Get suggestions for active goals (study topic suggestions)
-  const suggestions = await db.query.subjectSuggestions.findMany({
+  // Only show suggestions linked to active goals (not completed goals)
+  // This filters out old subject suggestions from the old system
+  const allSuggestions = await db.query.subjectSuggestions.findMany({
     where: eq(subjectSuggestions.studentId, studentId),
     orderBy: (suggestions, { desc }) => [desc(suggestions.createdAt)],
+  });
+
+  // Get all active goal IDs for this student
+  const activeGoals = await db.query.goals.findMany({
+    where: and(
+      eq(goals.studentId, studentId),
+      eq(goals.status, 'active')
+    ),
+    columns: { id: true },
+  });
+  const activeGoalIds = new Set(activeGoals.map(g => g.id));
+
+  // Filter suggestions to only show those linked to active goals
+  // Also include suggestions that have the new metadata structure (practice_activities, difficulty, etc.)
+  const suggestions = allSuggestions.filter((s) => {
+    // Include if linked to an active goal (new system)
+    if (s.completedGoalId && activeGoalIds.has(s.completedGoalId)) {
+      return true;
+    }
+    // Include if it has new metadata structure (has practice_activities, difficulty, etc.)
+    if (s.valueProposition) {
+      try {
+        const metadata = JSON.parse(s.valueProposition);
+        if (metadata.practice_activities || metadata.difficulty || metadata.estimated_hours) {
+          return true;
+        }
+      } catch (e) {
+        // Not JSON, likely old suggestion
+      }
+    }
+    // Exclude old suggestions (linked to completed goals or no metadata)
+    return false;
   });
 
   return NextResponse.json({
