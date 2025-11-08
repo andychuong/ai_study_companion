@@ -18,7 +18,7 @@ async function getHandler() {
   const { analyzeTranscript } = await import('@/lib/inngest/functions/analyze-transcript');
   const { generatePractice } = await import('@/lib/inngest/functions/generate-practice');
   const { sendEngagementNudges } = await import('@/lib/inngest/functions/engagement-nudges');
-  const { generateSubjectSuggestions } = await import('@/lib/inngest/functions/subject-suggestions');
+  const { generateGoalStudySuggestions } = await import('@/lib/inngest/functions/goal-study-suggestions');
 
   return serve({
     client: inngest,
@@ -26,7 +26,7 @@ async function getHandler() {
       analyzeTranscript,
       generatePractice,
       sendEngagementNudges,
-      generateSubjectSuggestions,
+      generateGoalStudySuggestions,
     ],
   });
 }

@@ -1,14 +1,23 @@
 import apiClient from './client';
 import { AxiosResponse } from 'axios';
 
-export interface SubjectSuggestion {
+export interface StudyTopicSuggestion {
   suggestionId: string;
-  subject: string;
+  topic: string; // Study topic name
   description: string | null;
   relevanceScore: number | null;
-  valueProposition: string | null;
   status: 'pending' | 'accepted' | 'dismissed';
+  goalId: string | null; // Links to the active goal
+  // Study topic metadata
+  practiceActivities: string[];
+  difficulty: 'beginner' | 'intermediate' | 'advanced' | null;
+  prerequisites: string[];
+  estimatedHours: number | null;
+  valueProposition: string | null; // Legacy field, may contain metadata
 }
+
+// Keep SubjectSuggestion for backward compatibility
+export type SubjectSuggestion = StudyTopicSuggestion;
 
 export interface SuggestionsResponse {
   suggestions: SubjectSuggestion[];

@@ -37,22 +37,14 @@ async function handler(req: NextRequest, context?: { params?: Promise<Record<str
     .set({ status: 'accepted' })
     .where(eq(subjectSuggestions.id, suggestionId));
 
-  // Create new goal from suggestion
-  const [goal] = await db
-    .insert(goals)
-    .values({
-      studentId: session.user.id,
-      subject: suggestion.subject,
-      description: suggestion.description || `Master ${suggestion.subject}`,
-      status: 'active',
-      progress: 0,
-    })
-    .returning();
-
+  // For study topic suggestions, we just mark them as accepted
+  // They're linked to an existing goal (via completedGoalId field)
+  // The user can use these suggestions to study for their goal
+  
   return NextResponse.json({
     suggestionId: suggestion.id,
-    goalId: goal.id,
-    message: 'Suggestion accepted and goal created',
+    goalId: suggestion.completedGoalId || null,
+    message: 'Study topic suggestion accepted! Use these practice activities to work toward your goal.',
   });
 }
 

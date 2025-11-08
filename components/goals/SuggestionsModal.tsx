@@ -42,7 +42,7 @@ export function SuggestionsModal({ suggestions, onClose, onAccept, onDismiss }: 
             </Button>
           </div>
           <p className="text-secondary-600 mt-2">
-            Based on your completed goal, here are some related subjects you might want to explore:
+            Study topics and practice activities to help you achieve your goal:
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -51,13 +51,25 @@ export function SuggestionsModal({ suggestions, onClose, onAccept, onDismiss }: 
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-lg">{suggestion.subject}</CardTitle>
-                    {suggestion.relevanceScore !== null && (
-                      <Badge variant="info" className="mt-2 flex items-center gap-1 w-fit">
-                        <Star className="h-3 w-3 fill-current" />
-                        {suggestion.relevanceScore.toFixed(1)}/10 relevance
-                      </Badge>
-                    )}
+                    <CardTitle className="text-lg">{suggestion.topic || suggestion.subject}</CardTitle>
+                    <div className="flex items-center gap-2 mt-2">
+                      {suggestion.relevanceScore !== null && (
+                        <Badge variant="info" className="flex items-center gap-1 w-fit">
+                          <Star className="h-3 w-3 fill-current" />
+                          {suggestion.relevanceScore.toFixed(1)}/10 relevance
+                        </Badge>
+                      )}
+                      {suggestion.difficulty && (
+                        <Badge variant="outline" className="capitalize">
+                          {suggestion.difficulty}
+                        </Badge>
+                      )}
+                      {suggestion.estimatedHours && (
+                        <Badge variant="outline">
+                          ~{suggestion.estimatedHours}h
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardHeader>
@@ -65,12 +77,25 @@ export function SuggestionsModal({ suggestions, onClose, onAccept, onDismiss }: 
                 {suggestion.description && (
                   <p className="text-sm text-secondary-600">{suggestion.description}</p>
                 )}
-                {suggestion.valueProposition && (
+                {suggestion.practiceActivities && suggestion.practiceActivities.length > 0 && (
                   <div className="bg-primary-50 border border-primary-200 rounded-lg p-3">
                     <div className="flex items-start gap-2">
                       <TrendingUp className="h-4 w-4 text-primary-600 mt-0.5 flex-shrink-0" />
-                      <p className="text-sm text-primary-900">{suggestion.valueProposition}</p>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-primary-900 mb-1">Practice Activities:</p>
+                        <ul className="text-sm text-primary-800 list-disc list-inside space-y-1">
+                          {suggestion.practiceActivities.map((activity, idx) => (
+                            <li key={idx}>{activity}</li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
+                  </div>
+                )}
+                {suggestion.prerequisites && suggestion.prerequisites.length > 0 && (
+                  <div className="text-xs text-secondary-500">
+                    <span className="font-semibold">Prerequisites: </span>
+                    {suggestion.prerequisites.join(', ')}
                   </div>
                 )}
                 <div className="flex gap-2 pt-2">
@@ -80,7 +105,7 @@ export function SuggestionsModal({ suggestions, onClose, onAccept, onDismiss }: 
                     onClick={() => onAccept(suggestion.suggestionId)}
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
-                    Accept & Create Goal
+                    Accept Study Topic
                   </Button>
                   <Button
                     variant="outline"

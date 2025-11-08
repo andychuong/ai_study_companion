@@ -42,32 +42,10 @@ export default function GoalsPage() {
   const handleComplete = async (goalId: string) => {
     try {
       await completeGoal.mutateAsync(goalId);
-      
-      // Wait a moment for Inngest to generate suggestions, then check
-      setTimeout(async () => {
-        queryClient.invalidateQueries({ queryKey: ["suggestions", user?.id] });
-        // Check for new suggestions
-        try {
-          const response = await suggestionsApi.getStudentSuggestions(user?.id || "");
-          const pendingSuggestions = response.data.suggestions.filter(
-            (s) => s.status === "pending"
-          );
-          if (pendingSuggestions.length > 0) {
-            setShowSuggestionsModal(true);
-          } else {
-            addNotification({
-              type: "success",
-              message: "Goal completed! Great job! Subject suggestions will be available soon.",
-            });
-          }
-        } catch (error) {
-          // If suggestions aren't ready yet, just show success
-          addNotification({
-            type: "success",
-            message: "Goal completed! Great job!",
-          });
-        }
-      }, 2000);
+      addNotification({
+        type: "success",
+        message: "Goal completed! Great job!",
+      });
     } catch (error) {
       addNotification({
         type: "error",
@@ -135,6 +113,27 @@ export default function GoalsPage() {
         <CreateGoalForm
           studentId={user.id}
           onClose={() => setShowCreateForm(false)}
+          onSuccess={async () => {
+            setShowCreateForm(false);
+            // Wait a moment for Inngest to generate suggestions, then check
+            setTimeout(async () => {
+              queryClient.invalidateQueries({ queryKey: ["suggestions", user?.id] });
+              queryClient.invalidateQueries({ queryKey: ["goals", user?.id] });
+              // Check for new suggestions
+              try {
+                const response = await suggestionsApi.getStudentSuggestions(user.id);
+                const pendingSuggestions = response.data.suggestions.filter(
+                  (s) => s.status === "pending"
+                );
+                if (pendingSuggestions.length > 0) {
+                  setShowSuggestionsModal(true);
+                }
+              } catch (error) {
+                // If suggestions aren't ready yet, that's okay
+                console.log("Suggestions not ready yet");
+              }
+            }, 3000);
+          }}
         />
       )}
 

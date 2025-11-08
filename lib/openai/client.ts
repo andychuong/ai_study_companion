@@ -99,9 +99,31 @@ export function extractJSON<T>(response: OpenAI.Chat.Completions.ChatCompletion)
   }
   
   try {
-    return JSON.parse(content) as T;
+    // Try to parse the content directly
+    const parsed = JSON.parse(content) as T;
+    return parsed;
   } catch (error) {
-    throw new Error(`Failed to parse JSON: ${content}`);
+    // If direct parsing fails, try to extract JSON from markdown code blocks
+    const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+    if (jsonMatch && jsonMatch[1]) {
+      try {
+        return JSON.parse(jsonMatch[1]) as T;
+      } catch (e) {
+        // Fall through to throw original error
+      }
+    }
+    
+    // Try to find JSON object in the content
+    const jsonObjectMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonObjectMatch && jsonObjectMatch[0]) {
+      try {
+        return JSON.parse(jsonObjectMatch[0]) as T;
+      } catch (e) {
+        // Fall through to throw original error
+      }
+    }
+    
+    throw new Error(`Failed to parse JSON: ${error instanceof Error ? error.message : String(error)}. Content: ${content.substring(0, 500)}`);
   }
 }
 

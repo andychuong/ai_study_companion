@@ -43,22 +43,8 @@ async function handler(req: NextRequest, context?: { params?: Promise<Record<str
     })
     .where(eq(goals.id, goalId));
 
-  // Trigger subject suggestion generation (optional - skip if Inngest not configured)
-  try {
-    if (process.env.INNGEST_EVENT_KEY) {
-      await inngest.send({
-        name: 'goal.completed',
-        data: {
-          goalId,
-          studentId: session.user.id,
-          subject: goal.subject,
-        },
-      });
-    }
-  } catch (error) {
-    // Log but don't fail the request if Inngest is not configured
-    logger.warn('Failed to send Inngest event (Inngest may not be configured)', { error, goalId });
-  }
+  // Note: Study suggestions are now generated when goals are created, not when completed
+  // This allows students to get study topics and practice activities to help achieve their goals
 
   const updatedGoal = await db.query.goals.findFirst({
     where: eq(goals.id, goalId),

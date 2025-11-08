@@ -22,9 +22,10 @@ type GoalFormData = z.infer<typeof goalSchema>;
 interface CreateGoalFormProps {
   studentId: string;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
-export function CreateGoalForm({ studentId, onClose }: CreateGoalFormProps) {
+export function CreateGoalForm({ studentId, onClose, onSuccess }: CreateGoalFormProps) {
   const createGoal = useCreateGoal();
   const { addNotification } = useUIStore();
 
@@ -47,10 +48,14 @@ export function CreateGoalForm({ studentId, onClose }: CreateGoalFormProps) {
       });
       addNotification({
         type: "success",
-        message: "Goal created successfully!",
+        message: "Goal created successfully! Study suggestions will be available soon.",
       });
       reset();
       onClose();
+      // Call onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
       addNotification({
         type: "error",

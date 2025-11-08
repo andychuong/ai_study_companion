@@ -101,9 +101,9 @@ export default function SuggestionsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-secondary-900">Subject Suggestions</h1>
+        <h1 className="text-3xl font-bold text-secondary-900">Study Topic Suggestions</h1>
         <p className="text-secondary-600 mt-1">
-          Discover your next learning goals based on your completed achievements
+          Study topics and practice activities to help you achieve your goals
         </p>
       </div>
 
@@ -181,7 +181,7 @@ export default function SuggestionsPage() {
               No suggestions yet
             </h3>
             <p className="text-secondary-600 mb-4">
-              Complete a goal to receive personalized subject suggestions!
+              Create a goal to receive personalized study topic suggestions!
             </p>
             <Link href="/goals">
               <Button variant="primary">View Goals</Button>
@@ -218,21 +218,61 @@ function SuggestionCard({
     <Card className={isDismissed ? "opacity-60" : ""}>
       <CardHeader>
         <div className="flex items-start justify-between">
-          <CardTitle className="text-lg">{suggestion.subject}</CardTitle>
-          {suggestion.relevanceScore !== null && (
-            <Badge variant="info" className="flex items-center gap-1">
-              <Star className="h-3 w-3 fill-current" />
-              {suggestion.relevanceScore.toFixed(1)}/10
-            </Badge>
-          )}
+          <CardTitle className="text-lg">{suggestion.topic || suggestion.subject}</CardTitle>
+          <div className="flex items-center gap-2">
+            {suggestion.relevanceScore !== null && (
+              <Badge variant="info" className="flex items-center gap-1">
+                <Star className="h-3 w-3 fill-current" />
+                {suggestion.relevanceScore.toFixed(1)}/10
+              </Badge>
+            )}
+            {suggestion.difficulty && (
+              <Badge variant="outline" className="capitalize text-xs">
+                {suggestion.difficulty}
+              </Badge>
+            )}
+          </div>
         </div>
+        {suggestion.estimatedHours && (
+          <p className="text-xs text-secondary-500 mt-1">
+            Estimated: ~{suggestion.estimatedHours} hours
+          </p>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {suggestion.description && (
           <p className="text-sm text-secondary-600">{suggestion.description}</p>
         )}
 
-        {suggestion.valueProposition && (
+        {suggestion.practiceActivities && suggestion.practiceActivities.length > 0 && (
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <TrendingUp className="h-4 w-4 text-primary-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-primary-900 mb-1">Practice Activities:</p>
+                <ul className="text-xs text-primary-800 list-disc list-inside space-y-0.5">
+                  {suggestion.practiceActivities.slice(0, 3).map((activity, idx) => (
+                    <li key={idx}>{activity}</li>
+                  ))}
+                  {suggestion.practiceActivities.length > 3 && (
+                    <li className="text-primary-600 italic">
+                      +{suggestion.practiceActivities.length - 3} more
+                    </li>
+                  )}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {suggestion.prerequisites && suggestion.prerequisites.length > 0 && (
+          <div className="text-xs text-secondary-500">
+            <span className="font-semibold">Prerequisites: </span>
+            {suggestion.prerequisites.join(', ')}
+          </div>
+        )}
+
+        {!suggestion.practiceActivities && suggestion.valueProposition && (
           <div className="bg-primary-50 border border-primary-200 rounded-lg p-3">
             <div className="flex items-start gap-2">
               <TrendingUp className="h-4 w-4 text-primary-600 mt-0.5 flex-shrink-0" />
@@ -266,7 +306,7 @@ function SuggestionCard({
           <div className="pt-2">
             <Badge variant="success" className="w-full justify-center">
               <CheckCircle className="h-3 w-3 mr-1" />
-              Goal Created
+              Accepted
             </Badge>
           </div>
         )}
